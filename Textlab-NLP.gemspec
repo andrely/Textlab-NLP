@@ -6,7 +6,8 @@ Gem::Specification.new do |s|
   s.description = 'Textlaboratory shared library.'
   s.authors = ['Andre Lynum']
   s.email = 'andrely@idi.ntnu.no'
-  s.files = ['lib/oslo_bergen_tagger.rb']
+  s.files = ['lib/globals.rb',
+             'lib/oslo_bergen_tagger.rb']
   s.homepage = ''
   s.license = ''
 end

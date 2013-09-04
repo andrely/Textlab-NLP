@@ -1,0 +1,8 @@
+{
+    "obtagger": {
+        "mtag": {
+            "linux": "mtag-linux",
+            "osx": "mtag-osx64"
+        }
+    }
+}
