@@ -7,7 +7,10 @@ Gem::Specification.new do |s|
   s.authors = ['Andre Lynum']
   s.email = 'andrely@idi.ntnu.no'
   s.files = ['lib/globals.rb',
-             'lib/oslo_bergen_tagger.rb']
+             'lib/logger_mixin.rb',
+             'lib/oslo_bergen_tagger.rb',
+             'lib/obt_format_reader.rb']
   s.homepage = ''
   s.license = ''
+  s.add_dependency('deep_merge', ">=1.0")
 end

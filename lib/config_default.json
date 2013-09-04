@@ -3,6 +3,15 @@
         "mtag": {
             "linux": "mtag-linux",
             "osx": "mtag-osx64"
+        },
+        "grammar": {
+            "bm": "bm_morf.cg",
+            "nn": "nn_morf.cg",
+            "bm_prestat": "bm_morf-prestat.cg"
+        },
+        "vislcg3": {
+            "osx": "vislcg3",
+            "linux": "vislcg3"
         }
     }
 }
