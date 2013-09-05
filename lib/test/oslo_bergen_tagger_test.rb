@@ -114,4 +114,24 @@ class OsloBergenTaggerTest < Test::Unit::TestCase
                    annotation: [{ tag: "clb <punkt>", lemma: "$."}]}]]
     assert_equal(expected, out)
   end
+
+  def test_obt_nn
+    tagger = TextlabNLP::OsloBergenTagger.new
+    omit_unless(tagger.available?, "Oslo-Bergen tagger not configured correctly")
+    out = tagger.annotate(file: StringIO.new("Hugsar du.\n"), format: :raw, lang: :nn)
+    expected = "<word>Hugsar</word>\n\"<hugsar>\"\n\t\"hugse\" verb pres tr2 tr5 tr18 tr12 tr19 tr21 tr22 \n<word>du</word>\n\"<du>\"\n\t\"du\" pron pers 2 eint hum nom \n<word>.</word>\n\"<.>\"\n\t\"$.\" clb <punkt> <<<"
+    assert_equal(expected.strip, out.strip)
+
+    out = tagger.annotate(file: StringIO.new("Hugsar du.\n"), format: :json, lang: :nn)
+    expected = [[{ word: "Hugsar",
+                   form: "hugsar",
+                   annotation: [{ tag: "verb pres tr2 tr5 tr18 tr12 tr19 tr21 tr22", lemma: "hugse" }]},
+                 { word: "du",
+                   form: "du",
+                   annotation: [{ tag: "pron pers 2 eint hum nom", lemma: "du" }]},
+                 { word: ".",
+                   form: ".",
+                   annotation: [{ tag: "clb <punkt>", lemma: "$." }]}]]
+    assert_equal(expected, out)
+  end
 end

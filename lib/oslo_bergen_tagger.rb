@@ -9,8 +9,7 @@ module TextlabNLP
   ##
   # Class for running the Oslo-Bergen part of speech tagger command line pipeline.
   # @note Not fully implemented
-  # @todo non disambiguated taggging of nynorsk
-  # @todo fully disambiguated tagging of nynorsk
+  # @todo fully disambiguated tagging of bokmal
   # @todo support of all platforms
   # @todo support vertical output
   # @todo support cwb output
