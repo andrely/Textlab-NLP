@@ -9,7 +9,6 @@ module TextlabNLP
   ##
   # Class for running the Oslo-Bergen part of speech tagger command line pipeline.
   # @note Not fully implemented
-  # @todo mtag nynorsk support
   # @todo non disambiguated taggging of bokmal
   # @todo non disambiguated taggging of nynorsk
   # @todo fully disambiguated tagging of nynorsk
@@ -33,18 +32,21 @@ module TextlabNLP
     # Annotates the given text with the Oslo-Bergen tagger pipeline.
     #
     # @option opts [IO, StringIO] file Readable instance with input too be annotated.
-    # @return [String]
+    # @option opts [Symbol] format Symbol specifying format (:raw, :json).
+    # @option opts [Symbol] lang Parse Bokmal (:bm) or Nynorsk (:nn).
+    # @return [String, Array]
     def annotate(opts={})
       mtag_only = opts[:mtag_only] || nil
       disambiguate = opts[:disambiguate] || nil
       format = opts[:format] || :json
       file = opts[:file] || nil
+      lang = opts[:lang] || :bm
 
       # IO instance is only input for now
       raise NotImplementedError if file.nil?
 
       if mtag_only
-        out = annotate_mtag(file)
+        out = annotate_mtag(file, lang)
       else
         raise NotImplementedError
       end
@@ -72,8 +74,8 @@ module TextlabNLP
 
     ##
     # @private
-    def annotate_mtag(file)
-      cmd = mtag_cmd
+    def annotate_mtag(file, lang)
+      cmd = mtag_cmd(lang)
       out = StringIO.new
       TextlabNLP.run_shell_command(cmd, file, out)
 
