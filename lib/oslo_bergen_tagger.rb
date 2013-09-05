@@ -9,12 +9,12 @@ module TextlabNLP
   ##
   # Class for running the Oslo-Bergen part of speech tagger command line pipeline.
   # @note Not fully implemented
-  # @todo non disambiguated taggging of bokmal
   # @todo non disambiguated taggging of nynorsk
   # @todo fully disambiguated tagging of nynorsk
   # @todo support of all platforms
   # @todo support vertical output
   # @todo support cwb output
+  # @todo support different path to grammars than binaries
   class OsloBergenTagger
 
     include Logging
@@ -47,8 +47,10 @@ module TextlabNLP
 
       if mtag_only
         out = annotate_mtag(file, lang)
-      else
+      elsif disambiguate
         raise NotImplementedError
+      else
+        out = annotate_obt(file, lang)
       end
 
       # if raw output is requested we just return it
@@ -83,21 +85,40 @@ module TextlabNLP
     end
 
     ##
+    # @private
+    def annotate_obt(file, lang)
+      cmd = "#{mtag_cmd(lang)} | #{vislcg3_cmd} -C latin1 --codepage-input utf-8 -g #{grammar_path(lang, false)} --codepage-output utf-8 --no-pass-origin -e"
+      out = StringIO.new
+      TextlabNLP.run_shell_command(cmd, file, out)
+
+      out.string
+    end
+
+    ##
     # Checks that external commands are configured and working correctly
     # @return [TrueClass, FalseClass]
+    # @todo check output where possible
     def available?
       # force return value to true/false
       #noinspection RubySimplifyBooleanInspection
-      !(TextlabNLP.runnable?(mtag_cmd) == false)
+      !(TextlabNLP.runnable?(mtag_cmd) == false) and !(TextlabNLP.runnable?(vislcg3_cmd) == false)
     end
 
     ##
     # @private
     def mtag_cmd(lang=:bm)
+      path = @config[:path]
+
+      if path
+        mtag_path = File.join(path, @config[:mtag][platform])
+      else
+        mtag_path = @config[:mtag][platform]
+      end
+
       if lang == :bm
-        "#{File.join(@config[:path], @config[:mtag][platform])} -wxml"
+        "#{mtag_path} -wxml"
       elsif lang == :nn
-        "#{File.join(@config[:path], @config[:mtag][platform])} -wxml -nno"
+        "#{mtag_path} -wxml -nno"
       else
         raise NotImplementedError
       end
@@ -106,7 +127,29 @@ module TextlabNLP
     ##
     # @private
     def grammar_path(lang=:bm, disambiguate=false)
-      raise NotImplementedError
+      raise NotImplementedError unless [:bm, :nn].member?(lang)
+
+      path = @config[:path]
+
+      lang = :bm_prestat if lang == :bm and disambiguate
+
+      if path
+        File.join(path, @config[:grammar][lang])
+      else
+        @config[:grammar][lang]
+      end
+    end
+
+    ##
+    # @private
+    def vislcg3_cmd
+      path = @config[:path]
+
+      if path
+        File.join(path, @config[:vislcg3][platform])
+      else
+        @config[:vislcg3][platform]
+      end
     end
 
     ##
@@ -118,7 +161,7 @@ module TextlabNLP
         @platform =
             case host_os
               when /mswin|msys|mingw|cygwin|bccwin|wince|emc/
-                :windows
+                :win
               when /darwin|mac os/
                 :osx
               when /linux/

@@ -2,7 +2,8 @@
     "obtagger": {
         "mtag": {
             "linux": "mtag-linux",
-            "osx": "mtag-osx64"
+            "osx": "mtag-osx64",
+            "win": "mtag.exe"
         },
         "grammar": {
             "bm": "bm_morf.cg",
@@ -11,7 +12,8 @@
         },
         "vislcg3": {
             "osx": "vislcg3",
-            "linux": "vislcg3"
+            "linux": "vislcg3",
+            "win": "vislcg3.exe"
         }
     }
 }
