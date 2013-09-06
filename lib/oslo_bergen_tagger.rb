@@ -1,6 +1,7 @@
 require 'rbconfig'
 require 'stringio'
 require 'tempfile'
+require 'deep_merge'
 
 require 'disambiguator'
 
@@ -21,11 +22,19 @@ module TextlabNLP
     include Logging
 
     ##
-    # @option opts [Hash] config Fully populated json config as a Hash instance.
+    # @option opts [Hash] config Json config overriding defaults as a Hash instance.
+    #noinspection RubyResolve
     def initialize(opts={})
-      @config = opts[:config] || TextlabNLP.config[:obtagger]
+      @config = opts[:config] || nil
 
-      # inject this value for testing only
+      if @config
+        @config = @config.deep_merge(TextlabNLP.config[:obtagger])
+      else
+        @config = TextlabNLP.config[:obtagger]
+      end
+
+      # inject these values for testing only
+      @config = opts[:replace_config] || @config
       @platform = opts[:platform] || nil
     end
 

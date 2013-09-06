@@ -55,7 +55,7 @@ class OsloBergenTaggerTest < Test::Unit::TestCase
   end
 
   def test_mtag_cmd
-    tagger = TextlabNLP::OsloBergenTagger.new(config: TextlabNLP.default_config[:obtagger], platform: :osx)
+    tagger = TextlabNLP::OsloBergenTagger.new(replace_config: TextlabNLP.default_config[:obtagger], platform: :osx)
     assert_equal("mtag-osx64 -wxml", tagger.mtag_cmd)
     assert_equal("mtag-osx64 -wxml", tagger.mtag_cmd(:bm))
     assert_equal("mtag-osx64 -wxml -nno", tagger.mtag_cmd(:nn))
@@ -63,7 +63,7 @@ class OsloBergenTaggerTest < Test::Unit::TestCase
       tagger.mtag_cmd(:bork)
     end
 
-    tagger = TextlabNLP::OsloBergenTagger.new(config: TextlabNLP.default_config[:obtagger], platform: :linux)
+    tagger = TextlabNLP::OsloBergenTagger.new(replace_config: TextlabNLP.default_config[:obtagger], platform: :linux)
     assert_equal("mtag-linux -wxml", tagger.mtag_cmd)
     assert_equal("mtag-linux -wxml", tagger.mtag_cmd(:bm))
     assert_equal("mtag-linux -wxml -nno", tagger.mtag_cmd(:nn))
@@ -71,7 +71,7 @@ class OsloBergenTaggerTest < Test::Unit::TestCase
       tagger.mtag_cmd(:bork)
     end
 
-    tagger = TextlabNLP::OsloBergenTagger.new(config: TextlabNLP.default_config[:obtagger], platform: :win)
+    tagger = TextlabNLP::OsloBergenTagger.new(replace_config: TextlabNLP.default_config[:obtagger], platform: :win)
     assert_equal("mtag.exe -wxml", tagger.mtag_cmd)
     assert_equal("mtag.exe -wxml", tagger.mtag_cmd(:bm))
     assert_equal("mtag.exe -wxml -nno", tagger.mtag_cmd(:nn))
@@ -81,7 +81,7 @@ class OsloBergenTaggerTest < Test::Unit::TestCase
   end
 
   def test_grammar_path
-    tagger = TextlabNLP::OsloBergenTagger.new(config: TextlabNLP.default_config[:obtagger])
+    tagger = TextlabNLP::OsloBergenTagger.new(replace_config: TextlabNLP.default_config[:obtagger])
     assert_equal("bm_morf.cg", tagger.grammar_path)
     assert_equal("bm_morf-prestat.cg", tagger.grammar_path(:bm, true))
     assert_equal("nn_morf.cg", tagger.grammar_path(:nn))
