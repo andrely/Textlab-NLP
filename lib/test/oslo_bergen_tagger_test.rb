@@ -134,4 +134,27 @@ class OsloBergenTaggerTest < Test::Unit::TestCase
                    annotation: [{ tag: "clb <punkt>", lemma: "$." }]}]]
     assert_equal(expected, out)
   end
+
+  def test_disambiguate
+    tagger = TextlabNLP::OsloBergenTagger.new
+    omit_unless(tagger.available?, "Oslo-Bergen tagger not configured correctly")
+    out = tagger.annotate(file: StringIO.new("Hallo i luken.\n"), format: :raw, disambiguate: true)
+    expected = "<word>Hallo</word>\n\"<hallo>\"\n\t\"hallo\" interj \n<word>i</word>\n\"<i>\"\n\t\"i\" prep \n<word>luken</word>\n\"<luken>\"\n\t\"luke\" subst appell mask be ent \n<word>.</word>\n\"<.>\"\n\t\"$.\" clb <<< <punkt>"
+    assert_equal(expected.strip, out.strip)
+
+    out = tagger.annotate(file: StringIO.new("Hallo i luken.\n"), format: :json, disambiguate: true)
+    expected = [[{ word: "Hallo",
+                   form: "hallo",
+                   annotation: [{ tag: "interj", lemma: "hallo"}]},
+                 { word: "i",
+                   form: "i",
+                   annotation: [{ tag: "prep", lemma: "i"}]},
+                 { word: "luken",
+                   form: "luken",
+                   annotation: [{ tag: "subst appell mask be ent", lemma: "luke"}]},
+                 { word: ".",
+                   form: ".",
+                   annotation: [{ tag: "clb <punkt>", lemma: "$."}]}]]
+    assert_equal(expected, out)
+  end
 end

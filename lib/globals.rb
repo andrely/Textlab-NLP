@@ -82,12 +82,13 @@ module TextlabNLP
   # @note Stderr output is written to STDERR. Stdout output is written to STDOUT if no stdout_file
   #   argument is given.
   # @todo This needs some serious cleaning up and proper handling of output to stdout/stderr.
+  # @todo suppress output but store stdout/stderr for debugging/logging purposes
   #
   # @param cmd [String] The shell command string. Should not include pipes.
   # @param stdin_file [IO, NilClass] IO instance to read input to the shell process from.
   # @param stdout_file [IO, NilClass] IO instance to write shell process output to.
-  # @return [Process::Status] Shell command exit status.
   def TextlabNLP.run_shell_command(cmd, stdin_file=nil, stdout_file=nil)
+    # @return [Process::Status] Shell command exit status.
     oe = ""
     err = ""
 

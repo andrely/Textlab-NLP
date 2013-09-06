@@ -1,5 +1,8 @@
 require 'rbconfig'
 require 'stringio'
+require 'tempfile'
+
+require 'disambiguator'
 
 require_relative 'globals'
 require_relative 'logger_mixin'
@@ -9,7 +12,6 @@ module TextlabNLP
   ##
   # Class for running the Oslo-Bergen part of speech tagger command line pipeline.
   # @note Not fully implemented
-  # @todo fully disambiguated tagging of bokmal
   # @todo support of all platforms
   # @todo support vertical output
   # @todo support cwb output
@@ -33,7 +35,9 @@ module TextlabNLP
     # @option opts [IO, StringIO] file Readable instance with input too be annotated.
     # @option opts [Symbol] format Symbol specifying format (:raw, :json).
     # @option opts [Symbol] lang Parse Bokmal (:bm) or Nynorsk (:nn).
+    # @option opts [TrueClass, FalseClass] disambiguate Disambiguate ouptput using OBT-Stat.
     # @return [String, Array]
+    # @todo implement as iterable
     def annotate(opts={})
       mtag_only = opts[:mtag_only] || nil
       disambiguate = opts[:disambiguate] || nil
@@ -44,12 +48,29 @@ module TextlabNLP
       # IO instance is only input for now
       raise NotImplementedError if file.nil?
 
+      # @todo clean up the actual annotation code
       if mtag_only
         out = annotate_mtag(file, lang)
       elsif disambiguate
-        raise NotImplementedError
+        # Annotate with OBT and write output to tmp file
+        tmp_obt_file = Tempfile.new('obt-stat')
+        annotate_obt(file, lang, tmp_obt_file)
+        tmp_obt_file.flush
+
+        # rewind OBT output file and write disambiguated output to stringio
+        tmp_obt_file.rewind
+        disamb_file = StringIO.new
+        disambiguator = Disambiguator.new(input_file: tmp_obt_file, writer: InputWriter.new(disamb_file))
+        disambiguator.disambiguate
+
+        # remove tmp file
+        tmp_obt_file.unlink
+
+        out = disamb_file.string
       else
-        out = annotate_obt(file, lang)
+        out = StringIO.new
+        annotate_obt(file, lang, out)
+        out = out.string
       end
 
       # if raw output is requested we just return it
@@ -85,12 +106,11 @@ module TextlabNLP
 
     ##
     # @private
-    def annotate_obt(file, lang)
+    def annotate_obt(in_file, lang, out_file)
       cmd = "#{mtag_cmd(lang)} | #{vislcg3_cmd} -C latin1 --codepage-input utf-8 -g #{grammar_path(lang, false)} --codepage-output utf-8 --no-pass-origin -e"
-      out = StringIO.new
-      TextlabNLP.run_shell_command(cmd, file, out)
+      TextlabNLP.run_shell_command(cmd, in_file, out_file)
 
-      out.string
+      out_file
     end
 
     ##
