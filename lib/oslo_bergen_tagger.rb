@@ -69,7 +69,8 @@ module TextlabNLP
         # rewind OBT output file and write disambiguated output to stringio
         tmp_obt_file.rewind
         disamb_file = StringIO.new
-        disambiguator = Disambiguator.new(input_file: tmp_obt_file, writer: InputWriter.new(disamb_file))
+        disambiguator = TextlabOBTStat::Disambiguator.new(input_file: tmp_obt_file,
+                                                          writer: TextlabOBTStat::InputWriter.new(disamb_file))
         disambiguator.disambiguate
 
         # remove tmp file
