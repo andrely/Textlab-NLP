@@ -16,7 +16,8 @@ module TextlabNLP
   # Default location of file containing default config overrides.
   CONFIG_FN = 'lib/config.json'
 
-  EXTERNAL_COMMAND_SILENT = false
+  # Default setting for echoing of external command output to stdout/stderr.
+  ECHO_EXTERNAL_COMMAND_OUTPUT = false
 
   ##
   # Returns the absolute path to the project root directory.
@@ -79,61 +80,58 @@ module TextlabNLP
   ##
   # Runs an external shell command.
   #
-  # @note Stderr output is written to STDERR. Stdout output is written to STDOUT if no stdout_file
-  #   argument is given.
-  # @todo This needs some serious cleaning up and proper handling of output to stdout/stderr.
-  # @todo suppress output but store stdout/stderr for debugging/logging purposes
+  # @todo This needs more cleaning up.
   #
   # @param cmd [String] The shell command string. Should not include pipes.
   #
   # @option opts [IO, NilClass] stdin_file IO instance to read input to the shell process from.
   # @option opts [IO, NilClass] stdout_file IO instance to write shell process output to.
+  # @option opts [TrueClass, FalseClass] echo_output Echo stdout and stderr of the command to $stdout.
   # @return [Process::Status] Status of the (terminated) process.
   def TextlabNLP.run_shell_command(cmd, opts={})
-    stdin_file = opts[:stdin_file] || nil
+    stdin_file = opts[:stdin_file] || StringIO.new
     stdout_file = opts[:stdout_file] || nil
+    echo_output = opts[:echo_output] || ECHO_EXTERNAL_COMMAND_OUTPUT
 
     # @return [Process::Status] Shell command exit status.
-    oe = ""
     err = ""
 
-    if stdin_file
-      stdin, stdout, stderr, thr = Open3.popen3 cmd
+    stdin, stdout, stderr, thr = Open3.popen3 cmd
 
 
-      # read and write stdin/stdout/stderr to avoid deadlocking on processes that blocks on writing.
-      # e.g. HunPos
-      begin
-        until stdin_file.eof?
+    # read and write stdin/stdout/stderr to avoid deadlocking on processes that blocks on writing.
+    # e.g. HunPos
+    begin
+      until stdin_file.eof?
 
-          # wait until stdout is emptied until we try to write or hunpos-tag will block
-          until stdout.ready?
-            stdin.puts(stdin_file.readline)
+        # wait until stdout is emptied until we try to write or hunpos-tag will block
+        until stdout.ready?
+          stdin.puts(stdin_file.readline)
 
-            # break completely out if there is no more inout
-            break if stdin_file.eof?
-          end
-
+          # break completely out if there is no more inout
           break if stdin_file.eof?
-
-          while stdout.ready?
-            if stdout_file
-              stdout_file.write(stdout.readline)
-            else
-              oe += stdout.readline
-            end
-          end
-
-          while stderr.ready?
-            err += stderr.readline
-          end
         end
+
+        break if stdin_file.eof?
+
+        while stdout.ready?
+          line = stdout.readline
+          stdout_file.write(line) if stdout_file
+          $stdout.puts line if echo_output
+        end
+
+        while stderr.ready?
+          line = stderr.readline
+          err += line
+          $stderr.puts line if echo_output
+        end
+      end
 
       rescue Errno::EPIPE => e
         # if we are here the cmd exited early on us
-        # dump stdout and stderr
-        puts err + stderr.read
-        puts oe + stdout.read
+        # dump stderr
+        err += stderr.read
+        $stderr.puts(err) if echo_output
 
         raise e
       end
@@ -141,37 +139,16 @@ module TextlabNLP
       stdin.close
 
       # get the rest of the output
-      if stdout_file
-        stdout_file.write(stdout.read)
-      else
-        oe += stdout.read
-      end
+      stdout_file.write(stdout.read)
 
       stdout.close
 
       err += stderr.read
+      $stderr.puts(err) if echo_output
       stderr.close
 
       # wait and get get Process::Status
       s = thr.value
-    else
-      out, err, s = Open3.capture3(cmd)
-
-      if stdout_file
-        stdout_file.write(out)
-      end
-    end
-
-    # echo errors on STDERR
-    STDERR.puts(err) if not EXTERNAL_COMMAND_SILENT
-
-    # echo command output
-    if stdout_file.nil?
-      puts(oe) if not EXTERNAL_COMMAND_SILENT
-    else
-      #noinspection RubyScope
-      puts(out) if not EXTERNAL_COMMAND_SILENT
-    end
 
     return s
   end
