@@ -17,7 +17,11 @@ module TextlabNLP
   CONFIG_FN = 'lib/config.json'
 
   # Default setting for echoing of external command output to stdout/stderr.
-  ECHO_EXTERNAL_COMMAND_OUTPUT = false
+  @echo_external_command_output = false
+
+  class << self
+    attr_accessor :echo_external_command_output
+  end
 
   ##
   # Returns the absolute path to the project root directory.
@@ -81,6 +85,7 @@ module TextlabNLP
   # Runs an external shell command.
   #
   # @todo This needs more cleaning up.
+  # @todo Generalize the push/pull of IO instances for general use.
   #
   # @param cmd [String] The shell command string. Should not include pipes.
   #
@@ -91,7 +96,7 @@ module TextlabNLP
   def TextlabNLP.run_shell_command(cmd, opts={})
     stdin_file = opts[:stdin_file] || StringIO.new
     stdout_file = opts[:stdout_file] || nil
-    echo_output = opts[:echo_output] || ECHO_EXTERNAL_COMMAND_OUTPUT
+    echo_output = opts[:echo_output] || @echo_external_command_output
 
     # @return [Process::Status] Shell command exit status.
     err = ""
@@ -168,5 +173,18 @@ module TextlabNLP
     rescue Errno::ENOENT
       return false
     end
+  end
+
+  # Get the full path of command line program in shell environment.
+  #
+  # @param [String] program Shell program name.
+  # @return [String] Full path to shell program.
+  def TextlabNLP.program_full_path(program)
+    out = StringIO.new
+    run_shell_command("which #{program}", stdout_file: out)
+    full_path = out.string.strip
+    raise RuntimeError unless File.exists?(full_path)
+
+    full_path
   end
 end
