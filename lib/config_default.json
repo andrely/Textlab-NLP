@@ -15,5 +15,17 @@
             "linux": "vislcg3",
             "win": "vislcg3.exe"
         }
+    },
+    "treetagger": {
+        "cmd_dir": "cmd",
+        "lib_dir": "lib",
+        "tokenize_latin1_cmd": "tokenize.pl",
+        "tokenize_utf8_cmd": "utf8-tokenize.perl",
+        "languages": {
+            "fra": {
+                "abbreviations_latin1_file": "french-abbreviations",
+                "abbreviations_utf8_file": "french-abbreviations-utf8"
+            }
+        }
     }
 }
