@@ -85,9 +85,14 @@ module TextlabNLP
   # @todo suppress output but store stdout/stderr for debugging/logging purposes
   #
   # @param cmd [String] The shell command string. Should not include pipes.
-  # @param stdin_file [IO, NilClass] IO instance to read input to the shell process from.
-  # @param stdout_file [IO, NilClass] IO instance to write shell process output to.
-  def TextlabNLP.run_shell_command(cmd, stdin_file=nil, stdout_file=nil)
+  #
+  # @option opts [IO, NilClass] stdin_file IO instance to read input to the shell process from.
+  # @option opts [IO, NilClass] stdout_file IO instance to write shell process output to.
+  # @return [Process::Status] Status of the (terminated) process.
+  def TextlabNLP.run_shell_command(cmd, opts={})
+    stdin_file = opts[:stdin_file] || nil
+    stdout_file = opts[:stdout_file] || nil
+
     # @return [Process::Status] Shell command exit status.
     oe = ""
     err = ""
@@ -180,7 +185,7 @@ module TextlabNLP
     begin
       out = StringIO.new
       # some commands always waits for input
-      run_shell_command(cmd, StringIO.new(''), out)
+      run_shell_command(cmd, stdin_file: StringIO.new(''), stdout_file: out)
 
       return out.string
     rescue Errno::ENOENT

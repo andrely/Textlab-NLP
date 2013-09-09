@@ -109,7 +109,7 @@ module TextlabNLP
     def annotate_mtag(file, lang)
       cmd = mtag_cmd(lang)
       out = StringIO.new
-      TextlabNLP.run_shell_command(cmd, file, out)
+      TextlabNLP.run_shell_command(cmd, stdin_file: file, stdout_file: out)
 
       out.string
     end
@@ -118,7 +118,7 @@ module TextlabNLP
     # @private
     def annotate_obt(in_file, lang, out_file)
       cmd = "#{mtag_cmd(lang)} | #{vislcg3_cmd} -C latin1 --codepage-input utf-8 -g #{grammar_path(lang, false)} --codepage-output utf-8 --no-pass-origin -e"
-      TextlabNLP.run_shell_command(cmd, in_file, out_file)
+      TextlabNLP.run_shell_command(cmd, stdin_file: in_file, stdout_file: out_file)
 
       out_file
     end
