@@ -58,8 +58,7 @@ module TextlabNLP
 
           sentence << word
 
-          end_of_sent = true if word[:is_punctuation] and @use_static_punctuation
-          word.delete(:is_punctuation) if word.has_key?(:is_punctuation)
+          end_of_sent = true if word[:form].match(@punctuation_regex) and @use_static_punctuation
           end_of_sent = true if word[:end_of_sentence_p] and not @use_static_punctuation
           word.delete(:end_of_sentence_p) if word.has_key?(:end_of_sentence_p)
 

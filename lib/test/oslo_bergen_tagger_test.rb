@@ -156,5 +156,33 @@ class OsloBergenTaggerTest < Test::Unit::TestCase
                    form: ".",
                    annotation: [{ tag: "clb <punkt>", lemma: "$."}]}]]
     assert_equal(expected, out)
+
+    # with more than one sentence
+    expected = [[{ word: "Hallo",
+                   form: "hallo",
+                   annotation: [{ tag: "interj", lemma: "hallo"}]},
+                 { word: "i",
+                   form: "i",
+                   annotation: [{ tag: "prep", lemma: "i"}]},
+                 { word: "luken",
+                   form: "luken",
+                   annotation: [{ tag: "subst appell mask be ent", lemma: "luke"}]},
+                 { word: ".",
+                   form: ".",
+                   annotation: [{ tag: "clb <punkt>", lemma: "$."}]}],
+                [{ word: "Vi",
+                   form: "vi",
+                   annotation: [{ tag: "pron fl pers hum nom 1", lemma: "vi"}]},
+                 { word: "drar",
+                   form: "drar",
+                   annotation: [{ tag: "verb pres tr1 i1 tr11 pa1 a3 rl5 pa5 tr11/til a7 a9", lemma: "dra" }]},
+                 { word: "til sjøs",
+                   form: "til sjøs",
+                   annotation: [{ tag: "prep prep+subst @adv", lemma: "til sjøs" }]},
+                 { word: ".",
+                   form: ".",
+                   annotation: [{ tag: "clb <punkt>", lemma: "$."}]}]]
+    out = tagger.annotate(file: StringIO.new("Hallo i luken.\nVi drar til sjøs.\n"), format: :json, disambiguate: true)
+    assert_equal(expected, out)
   end
 end

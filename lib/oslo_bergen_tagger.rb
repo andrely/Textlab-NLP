@@ -89,7 +89,7 @@ module TextlabNLP
       # convert to other formats through json
       reader = TextlabNLP::OBTFormatReader.new(StringIO.new(out), use_static_puntuation=true)
       out = []
-      reader.each_sentence { |s| out << s }
+      reader.each_sentence { |s| out.push(s) }
 
       if format == :json
         out
