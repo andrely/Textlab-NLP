@@ -1,3 +1,5 @@
+require_relative 'globals'
+
 module TextlabNLP
 
   class TreeTaggerConfig
@@ -121,6 +123,13 @@ module TextlabNLP
     def self.for_lang(lang, opts={})
       opts[:lang] = lang
       TreeTaggerConfig.new(opts)
+    end
+
+    def self.lang_available?(lang, opts={})
+      opts[:lang] = lang
+      config = TreeTaggerConfig.new(opts)
+
+      TextlabNLP.runnable?(config.pipeline_cmd) and TextlabNLP.runnable?(config.tokenize_cmd)
     end
   end
 end

@@ -10,13 +10,15 @@ require_relative '../globals'
 
 class TreeTaggerTest < Test::Unit::TestCase
   def test_tokenize
+    omit_unless(TextlabNLP::TreeTaggerConfig.lang_available?(:fra))
     tagger = TextlabNLP::TreeTagger.for_lang(:fra)
     out = StringIO.new
     tagger.tokenize(StringIO.new("Les tribulations d'une caissière."), out)
     assert_equal("Les\ntribulations\nd'\nune\ncaissière\n.", out.string.strip)
   end
 
-  def test_annotate
+  def test_annotate_fra
+    omit_unless(TextlabNLP::TreeTaggerConfig.lang_available?(:fra))
     tagger = TextlabNLP::TreeTagger.for_lang(:fra)
     out = tagger.annotate(file: StringIO.new("Les tribulations d'une caissière."), format: :raw)
     assert_equal("Les\tDET:ART\tle\ntribulations\tNOM\ttribulation\nd'\tPRP\tde\nune\tDET:ART\tun\ncaissière\tNOM\tcaissier\n.\tSENT\t.",
@@ -34,7 +36,10 @@ class TreeTaggerTest < Test::Unit::TestCase
                           format: :raw)
     assert_equal(Iconv.conv('latin1', 'utf-8', "Les\tDET:ART\tle\ntribulations\tNOM\ttribulation\nd'\tPRP\tde\nune\tDET:ART\tun\ncaissière\tNOM\tcaissier\n.\tSENT\t."),
                  out.strip)
+  end
 
+  def test_annotate_swe
+    omit_unless(TextlabNLP::TreeTaggerConfig.lang_available?(:swe))
     tagger = TextlabNLP::TreeTagger.for_lang(:swe)
     out = tagger.annotate(file: StringIO.new("Problem med möss. Problem med möss."))
     assert_equal([[{ word: "Problem", annotation: [{ tag: "NCNPN@IS", lemma: "problem"}] },
