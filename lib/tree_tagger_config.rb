@@ -1,6 +1,9 @@
 module TextlabNLP
 
   class TreeTaggerConfig
+
+    # @option opts [Symbol] lang ISO-639-2 language code (:fra or :swe).
+    # @option opts [Symbol] encoding Input encoding (:utf8 or :latin1).
     def initialize(opts={})
       @config = opts[:config] || nil
 
@@ -64,6 +67,7 @@ module TextlabNLP
       args.join(' ')
     end
 
+    # @private
     def pipeline_cmd
       path = @config[:path]
       lang_config = @config[:languages][@lang]
@@ -86,6 +90,7 @@ module TextlabNLP
       cmd
     end
 
+    # @private
     def sent_tag
       lang_config = @config[:languages][@lang]
 
@@ -96,6 +101,7 @@ module TextlabNLP
       end
     end
 
+    # @private
     def encoding
       case @encoding
         when :utf8
@@ -107,8 +113,14 @@ module TextlabNLP
       end
     end
 
-    def self.for_lang(lang, encoding=:utf8)
-      TreeTaggerConfig.new(lang: lang, encoding: encoding)
+    # Treetagger configuration for specified language.
+    # @see #initialize for full list of options.
+    #
+    # @param [Object] lang ISO-639-2 language code (:fra or :swe).
+    # @return [TreeTaggerConfig]
+    def self.for_lang(lang, opts={})
+      opts[:lang] = lang
+      TreeTaggerConfig.new(opts)
     end
   end
 end

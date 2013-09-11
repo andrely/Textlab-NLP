@@ -29,7 +29,7 @@ class TreeTaggerTest < Test::Unit::TestCase
                    { word: "caissière", annotation: [{ tag: "NOM", lemma: "caissier" }]},
                    { word: ".", annotation: [{ tag: "SENT", lemma: "."}]}]],
                  out)
-    tagger = TextlabNLP::TreeTagger.for_lang(:fra, :latin1)
+    tagger = TextlabNLP::TreeTagger.for_lang(:fra, encoding: :latin1)
     out = tagger.annotate(file: StringIO.new(Iconv.conv('latin1', 'utf-8', "Les tribulations d'une caissière.")),
                           format: :raw)
     assert_equal(Iconv.conv('latin1', 'utf-8', "Les\tDET:ART\tle\ntribulations\tNOM\ttribulation\nd'\tPRP\tde\nune\tDET:ART\tun\ncaissière\tNOM\tcaissier\n.\tSENT\t."),
@@ -47,7 +47,7 @@ class TreeTaggerTest < Test::Unit::TestCase
                    { word: ".", annotation: [{ tag: "FE", lemma: "." }]}]],
                  out)
 
-    tagger = TextlabNLP::TreeTagger.for_lang(:swe, :latin1)
+    tagger = TextlabNLP::TreeTagger.for_lang(:swe, encoding: :latin1)
     out = tagger.annotate(file: StringIO.new(Iconv.conv('latin1', 'utf8', "Problem med möss.")),
                           format: :raw)
     assert_equal(Iconv.conv('latin1', 'utf-8', "Problem\tNCNPN@IS\tproblem\nmed\tSPS\tmed\nmöss\tNCUPN@IS\tmus\n.\tFE\t."), out.strip)

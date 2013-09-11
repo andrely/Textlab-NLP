@@ -91,13 +91,13 @@ module TextlabNLP
       text
     end
 
-    # Treetagger configurations for specific languages.
+    # Treetagger for specific languages.
+    # @see TreeTaggerConfig.initialize for all options
     #
     # @param [Symbol] lang ISO-639-2 language code (:fra or :swe).
-    # @param [Symbol] encoding Text encoding of input (:utf8 or :latin1).
-    # @return [TreeTaggerConfig]
-    def self.for_lang(lang, encoding=:utf8)
-      TreeTagger.new(config: TreeTaggerConfig.for_lang(lang, encoding))
+    # @return [TreeTagger]
+    def self.for_lang(lang, opts={})
+      TreeTagger.new(config: TreeTaggerConfig.for_lang(lang, opts))
     end
   end
 end
