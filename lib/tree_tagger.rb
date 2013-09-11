@@ -1,79 +1,103 @@
+require_relative 'tree_tagger_config'
+
 module TextlabNLP
 
   # Class for running TreeTagger with included models and tools.
-  # @note NOt fully implemented.
+  # @note Not fully implemented.
   class TreeTagger
 
-    # @option opts [Hash] config Json config overriding defaults as a Hash instance.
+    # @option opts [TreeTaggerConfig] config Mandatory configuration instance.
     def initialize(opts={})
-      @config = opts[:config] || nil
-
-      if @config
-        @config = @config.deep_merge(TextlabNLP.config[:treetagger])
-      else
-        @config = TextlabNLP.config[:treetagger]
-      end
-
-      # inject these values for testing only
-      #noinspection RubyResolve
-      @config = opts[:replace_config] || @config
+      @config = opts[:config] || raise(ArgumentError)
     end
 
-    # @private
-    def tokenize_cmd(lang, encoding=:utf8)
-      path = @config[:path]
-      lang_config = @config[:languages][lang]
-
-      tokenize_bin =
-          case encoding
-            when :latin1
-              @config[:tokenize_latin1_cmd]
-            when :utf8
-              @config[:tokenize_utf8_cmd]
-            else
-              raise NotImplementedError
-      end
-
-      tokenize_path = File.join(@config[:cmd_dir], tokenize_bin)
-      tokenize_path = File.join(path, tokenize_path) if path
-
-      args = [tokenize_path]
-
-      abbrev_path =
-          case encoding
-            when :latin1
-              lang_config[:abbreviations_latin1_file] if lang_config
-            when :utf8
-              lang_config[:abbreviations_utf8_file] if lang_config
-            else
-              raise NotImplementedError
-          end
-
-      abbrev_path = File.join(@config[:lib_dir], abbrev_path) if abbrev_path
-      args << "-a #{File.join(path, abbrev_path)}" if path and abbrev_path
-
-      #noinspection RubyCaseWithoutElseBlockInspection
-      case lang
-        when :fra
-          args << '-f'
-        when :ita
-          args << '-i'
-        when :eng
-          args << '-e'
-      end
-
-      args.join(' ')
-    end
-
-    # Tokenize input with specified tokenizer.
+    # Tokenize input.
     #
     # @param [IO, StringIO] in_file
     # @param [IO, StringIO] out_file
-    # @param [Symbol] lang Language of the input text (three letter iso-639-2 code, :fra specifically supported).
-    # @param [Symbol] encoding Input/output encoding (:utf8, :latin1).
-    def tokenize(in_file, out_file, lang, encoding=:utf8)
-      cmd = tokenize_cmd(lang, encoding)
+    def tokenize(in_file, out_file)
+      TreeTagger.tokenize(@config, in_file, out_file)
+    end
+
+    # Tokenize input with specified configuration.
+    #
+    # @param [TreeTaggerConfig] config
+    # @param [IO, StringIO] in_file
+    # @param [IO, StringIO] out_file
+    def self.tokenize(config, in_file, out_file)
+      cmd = config.tokenize_cmd
       TextlabNLP.run_shell_command(cmd, stdin_file: in_file, stdout_file: out_file)
+    end
+
+    # Tag and lemmatize input.
+    # @see #self.annotate for complete list of options.
+    def annotate(opts={})
+      opts[:config] = @config unless opts.has_key?(:config)
+
+      TreeTagger.annotate(opts)
+    end
+
+    # Tag and lemmatize input with specified configuration.
+    #
+    # @option opts [Symbol] format Output format (:json or :raw).
+    # @option opts [IO, StringIO] file IO like object to read input from.
+    # @option opts [TreeTaggerConfig] config Mandatory configuration instance.
+    def self.annotate(opts={})
+      format = opts[:format] || :json
+      file = opts[:file] || raise(ArgumentError)
+      config = opts[:config] || raise(ArgumentError)
+      out_file = StringIO.new
+
+      out_file.set_encoding(config.encoding)
+
+      cmd = config.pipeline_cmd
+      TextlabNLP.run_shell_command(cmd, stdin_file: file, stdout_file: out_file)
+
+      if format == :raw
+        out_file.string
+      elsif format == :json
+        out_file.rewind
+        TreeTagger.tt_to_json(out_file, config.sent_tag)
+      else
+        raise NotImplementedError
+      end
+    end
+
+    # @private
+    # Converts Treetagger output to JSON format.
+    #
+    # @param [Object] tt_file IO like instance to read Treetagger output from.
+    # @param [String] sent_tag Sentence end tag used by Treetagger model.
+    # @return [Array<Array>>] The Treetagger output in JSON format as an array of sentences.
+    def self.tt_to_json(tt_file, sent_tag="SENT")
+      sentence = []
+      text = []
+
+      tt_file.readlines.each do |line|
+        tokens = line.strip.split("\t")
+        raise RuntimeError unless tokens.count == 3
+
+        word, tag, lemma = tokens
+        sentence << { word: word, annotation: [{ tag: tag, lemma: lemma}]}
+
+        if tag == sent_tag
+          text.push(sentence)
+          sentence = []
+        end
+      end
+
+      text.push(sentence) unless sentence.empty?
+
+      text
+    end
+
+    # Treetagger configurations for specific languages.
+    #
+    # @param [Symbol] lang ISO-639-2 language code (:fra or :swe).
+    # @param [Symbol] encoding Text encoding of input (:utf8 or :latin1).
+    # @return [TreeTaggerConfig]
+    def self.for_lang(lang, encoding=:utf8)
+      TreeTagger.new(config: TreeTaggerConfig.for_lang(lang, encoding))
     end
   end
 end
