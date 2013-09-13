@@ -10,18 +10,19 @@ module TextlabNLP
   class OBTFormatReader
     attr_reader :file, :postamble
 
-    @peeked_word_record = nil
-    @peeked_orig_word_record = nil
-    @peeked_preamble = nil
-    @postamble = nil
+    # XML tag containing sentences in TEI documents.
+    SENT_SEG_TAG = 's'
+    OPEN_SENT_TAG_REGEX = Regexp.compile("^\\w*<#{SENT_SEG_TAG}(.*)?>")
+    CLOSE_SENT_TAG_REGEX = Regexp.compile("^\\w*</#{SENT_SEG_TAG}>")
 
     ##
     #
     # @param [IO, StringIO] readable IO like instance with text to parse.
     # @param [TrueClass, FalseClass] use_static_punctuation If true sentences are split on fixed punctuation
     #   characters, if false Multitagger sentence end annotation are used sto split sentences.
-    def initialize(readable, use_static_punctuation = false)
+    def initialize(readable, opts={})
       @file = readable
+      @sent_seg = opts[:sent_seg] || :static
 
       @word_regex = Regexp.compile('\"<(.*)>\"')
       @tag_lemma_regex = Regexp.compile('^;?\s+\"(.*)\"(.*)')
@@ -33,7 +34,13 @@ module TextlabNLP
       @capitalized_marker = '<*>'
       @end_of_sentence_marker = '<<<'
 
-      @use_static_punctuation = use_static_punctuation
+      # keeping track of already read data
+      @next_word = nil
+
+      @peeked_word_record = nil
+      @peeked_orig_word_record = nil
+      @peeked_preamble = []
+      @postamble = nil
     end
 
     ##
@@ -47,7 +54,7 @@ module TextlabNLP
     ##
     # @private
     def get_next_sentence(f)
-      sentence = []
+      sentence = { words: []}
 
       while TRUE
         begin
@@ -56,17 +63,50 @@ module TextlabNLP
 
           break if word.nil?
 
-          sentence << word
+          # @todo Sentence segmentation is hacky. Redo in an inconsistent manner
 
-          end_of_sent = true if word[:form].match(@punctuation_regex) and @use_static_punctuation
-          end_of_sent = true if word[:end_of_sentence_p] and not @use_static_punctuation
+          # if looking for xml tags we need to check for end tag before adding words, if so
+          # we store the word and end the sentence. At the start of next sentence we'll
+          # pick up the start tag and attributes
+          if @sent_seg == :xml
+            word[:xml_in_preamble].each_with_index do |marker, i|
+              if marker.kind_of?(Hash)
+                # @todo handle empty sentence segmentation tags
+                raise RuntimeError if sentence[:words].count > 0 or end_of_sent == true
+
+                sentence = marker.merge(sentence)
+              elsif marker == :closed
+                # @todo support empty sentences, right now we can't pass through here twice
+                raise RuntimeError if end_of_sent
+                end_of_sent = true
+                # nuke this entry or we'll think it's sentence end when we look at the word again
+                word[:xml_in_preamble].delete_at(i)
+                break
+              end
+            end
+
+            if end_of_sent
+              # stash word for start of next sentence
+              @next_word = word
+
+              break
+            end
+          end
+
+          word.delete(:xml_in_preamble)
+
+          sentence[:words] << word
+
+          # for other sentence segmentation we'll look at the punctuation or tag marker in the word
+          end_of_sent = true if word[:form].match(@punctuation_regex) and @sent_seg == :static
+          end_of_sent = true if word[:end_of_sentence_p] and @sent_seg == :mtag
           word.delete(:end_of_sentence_p) if word.has_key?(:end_of_sentence_p)
 
           break if end_of_sent
         end
       end
 
-      return nil if sentence.empty?
+      return nil if sentence[:words].empty?
 
       sentence
     end
@@ -74,11 +114,19 @@ module TextlabNLP
     ##
     # @private
     def get_next_word(f)
+      # xml sentence segmentation handling may have stored the next word for us here
+      if @next_word
+        next_word = @next_word
+        @next_word = nil
+        return next_word
+      end
+
       word = {}
       begin
-        string, orig_string, _ = get_word_header(f)
+        string, orig_string, preamble = get_word_header(f)
         word[:word] = orig_string
         word[:form] = string
+        word[:xml_in_preamble] = []
       rescue EOFError
         return nil
       end
@@ -86,6 +134,15 @@ module TextlabNLP
       get_word_tags(f, word)
 
       raise RuntimeError if word[:annotation].empty?
+
+      # Check for XML sentence tags in the preamble so it can be passed up to get_next_sentence
+      preamble.each do |line|
+        if OBTFormatReader.is_open_sent_tag_line(line)
+          word[:xml_in_preamble].push(OBTFormatReader.attributes(line))
+        elsif OBTFormatReader.is_close_sent_tag_line(line)
+          word[:xml_in_preamble].push(:closed)
+        end
+      end
 
       word
     end
@@ -165,11 +222,7 @@ module TextlabNLP
       elsif is_orig_word_line(line)
         @peeked_orig_word_record = get_orig_word(line)
       else
-        if @peeked_preamble
-          @peeked_preamble << line.strip
-        else
-          @peeked_preamble = [line.strip]
-        end
+        @peeked_preamble << line.strip
       end
     end
 
@@ -178,7 +231,7 @@ module TextlabNLP
     def unpeek()
       @peeked_word_record = nil
       @peeked_orig_word_record = nil
-      @peeked_preamble = nil
+      @peeked_preamble = []
     end
 
     def is_word_line(line)
@@ -258,6 +311,34 @@ module TextlabNLP
       end
 
       nil
+    end
+
+    # @param [String] line
+    # @return [TrueClass, FalseClass]
+    def self.is_open_sent_tag_line(line)
+      not line.match(OPEN_SENT_TAG_REGEX).nil?
+    end
+
+    # @param [String] line
+    # @return [TrueClass, FalseClass] true if line contains closing sentence segmention tag.
+    def self.is_close_sent_tag_line(line)
+      not line.match(CLOSE_SENT_TAG_REGEX).nil?
+    end
+
+    # @param [String] tag_line String containing tag.
+    # @return [NilClass, Hash] Hash containing the attributes if a tag is present in the string, nil otherwise.
+    def self.attributes(tag_line)
+      m = tag_line.match(OPEN_SENT_TAG_REGEX)
+      return nil if m.nil? or m.captures.empty?
+      attr = {}
+
+      attr_str = m.captures.first
+      attr_str.split.each do |str|
+        id, val = str.split('=')
+        attr[id.to_sym] = TextlabOBTStat::remove_quotes(val.strip)
+      end
+
+      attr
     end
   end
 end

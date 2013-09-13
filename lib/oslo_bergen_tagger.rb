@@ -45,6 +45,7 @@ module TextlabNLP
     # @option opts [Symbol] format Symbol specifying format (:raw, :json).
     # @option opts [Symbol] lang Parse Bokmal (:bm) or Nynorsk (:nn).
     # @option opts [TrueClass, FalseClass] disambiguate Disambiguate ouptput using OBT-Stat.
+    # @option opts [Symbol] sent_seg Sentence segmentation method (:static, :mtag, :xml)
     # @return [String, Array]
     # @todo implement as iterable
     def annotate(opts={})
@@ -53,6 +54,7 @@ module TextlabNLP
       format = opts[:format] || :json
       file = opts[:file] || nil
       lang = opts[:lang] || :bm
+      sent_seg = opts[:sent_seg] || :static
 
       # IO instance is only input for now
       raise NotImplementedError if file.nil?
@@ -70,7 +72,8 @@ module TextlabNLP
         tmp_obt_file.rewind
         disamb_file = StringIO.new
         disambiguator = TextlabOBTStat::Disambiguator.new(input_file: tmp_obt_file,
-                                                          writer: TextlabOBTStat::InputWriter.new(disamb_file))
+                                                          writer: TextlabOBTStat::InputWriter.new(file: disamb_file),
+                                                          sent_seg: sent_seg)
         disambiguator.disambiguate
 
         # remove tmp file
@@ -87,7 +90,7 @@ module TextlabNLP
       return out if format == :raw
 
       # convert to other formats through json
-      reader = TextlabNLP::OBTFormatReader.new(StringIO.new(out), use_static_puntuation=true)
+      reader = TextlabNLP::OBTFormatReader.new(StringIO.new(out), sent_seg: sent_seg)
       out = []
       reader.each_sentence { |s| out.push(s) }
 
