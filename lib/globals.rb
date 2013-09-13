@@ -187,4 +187,36 @@ module TextlabNLP
 
     full_path
   end
+
+  OPEN_TAG_REGEX = Regexp.compile("^\\s*<(\\w+)(.*)?>")
+  CLOSED_TAG_REGEX = Regexp.compile("^\\s*</(\\w+)>")
+
+  # Parse XML/HTML style tag if present in string.
+  #
+  # @param [String] str
+  # @return [Array] Returns three elements: tag as String, state as Symbol (:open, :closed) and a Hash with the
+  #   tag attributes using Symbol keys (ie. :id => "the_id").
+  def TextlabNLP.parse_tag(str)
+    closed_m = str.match(CLOSED_TAG_REGEX)
+
+    if closed_m
+      return closed_m.captures.first, :closed, nil
+    end
+
+    open_m = str.match(OPEN_TAG_REGEX)
+
+    if open_m
+      attr_str = open_m.captures[1]
+      attr= {}
+
+      attr_str.split.each do |s|
+        id, val = s.split('=')
+        attr[id.to_sym] = TextlabOBTStat::remove_quotes(val.strip)
+      end
+
+      return open_m.captures[0], :open, attr
+    end
+
+    return nil, nil, nil
+  end
 end

@@ -42,10 +42,13 @@ module TextlabNLP
     # @option opts [Symbol] format Output format (:json or :raw).
     # @option opts [IO, StringIO] file IO like object to read input from.
     # @option opts [TreeTaggerConfig] config Mandatory configuration instance.
+    # @option opts [Symbol] sent_seg Use XML tags or token tag (:tag, :xml) to segment sentences in final json output.
+    # @return [String, Array<Hash>] Raw output string or Hash based json representation of the output.
     def self.annotate(opts={})
       format = opts[:format] || :json
       file = opts[:file] || raise(ArgumentError)
       config = opts[:config] || raise(ArgumentError)
+      sent_seg = opts[:sent_seg] || :tag
       out_file = StringIO.new
 
       out_file.set_encoding(config.encoding)
@@ -57,7 +60,7 @@ module TextlabNLP
         out_file.string
       elsif format == :json
         out_file.rewind
-        TreeTagger.tt_to_json(out_file, config.sent_tag)
+        TreeTagger.tt_to_json(out_file, config.sent_tag, sent_seg)
       else
         raise NotImplementedError
       end
@@ -68,25 +71,41 @@ module TextlabNLP
     #
     # @param [Object] tt_file IO like instance to read Treetagger output from.
     # @param [String] sent_tag Sentence end tag used by Treetagger model.
-    # @return [Array<Array>>] The Treetagger output in JSON format as an array of sentences.
-    def self.tt_to_json(tt_file, sent_tag="SENT")
-      sentence = []
+    # @param [Symbol] sent_seg  Use XML tags or token tag (:tag, :xml) to segment sentences.
+    # @return [Array<Hash>] The Treetagger output in JSON format as an array of sentences.
+    def self.tt_to_json(tt_file, sent_tag="SENT", sent_seg=:tag)
+      sentence = { words: [] }
       text = []
 
       tt_file.readlines.each do |line|
-        tokens = line.strip.split("\t")
-        raise RuntimeError unless tokens.count == 3
+        tag, state, attr = TextlabNLP.parse_tag(line)
 
-        word, tag, lemma = tokens
-        sentence << { word: word, annotation: [{ tag: tag, lemma: lemma}]}
+        # if we got a tag put attributes on sentence or split sentence accordingly
+        if sent_seg == :xml
+          if tag == 's' and state == :open
+            sentence = attr.merge(sentence)
+            next
+          elsif tag == 's' and state == :closed
+            text.push(sentence)
+            sentence = { words: [] }
+          end
+        end
 
-        if tag == sent_tag
-          text.push(sentence)
-          sentence = []
+        unless tag
+          tokens = line.strip.split("\t")
+          raise RuntimeError unless tokens.count == 3
+
+          word, tag, lemma = tokens
+          sentence[:words] << { word: word, annotation: [{ tag: tag, lemma: lemma}]}
+
+          if tag == sent_tag and sent_seg == :tag
+            text.push(sentence)
+            sentence = { words: [] }
+          end
         end
       end
 
-      text.push(sentence) unless sentence.empty?
+      text.push(sentence) unless sentence[:words].empty?
 
       text
     end

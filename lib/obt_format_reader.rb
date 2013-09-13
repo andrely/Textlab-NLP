@@ -1,3 +1,5 @@
+require_relative 'globals'
+
 module TextlabNLP
   ##
   # Reads OBT formatted files into a structured formatted. Can be iterated over.
@@ -12,8 +14,8 @@ module TextlabNLP
 
     # XML tag containing sentences in TEI documents.
     SENT_SEG_TAG = 's'
-    OPEN_SENT_TAG_REGEX = Regexp.compile("^\\w*<#{SENT_SEG_TAG}(.*)?>")
-    CLOSE_SENT_TAG_REGEX = Regexp.compile("^\\w*</#{SENT_SEG_TAG}>")
+    OPEN_SENT_TAG_REGEX = Regexp.compile("^\\s*<#{SENT_SEG_TAG}(.*)?>")
+    CLOSED_SENT_TAG_REGEX = Regexp.compile("^\\s*</#{SENT_SEG_TAG}>")
 
     ##
     #
@@ -322,23 +324,15 @@ module TextlabNLP
     # @param [String] line
     # @return [TrueClass, FalseClass] true if line contains closing sentence segmention tag.
     def self.is_close_sent_tag_line(line)
-      not line.match(CLOSE_SENT_TAG_REGEX).nil?
+      not line.match(CLOSED_SENT_TAG_REGEX).nil?
     end
 
     # @param [String] tag_line String containing tag.
     # @return [NilClass, Hash] Hash containing the attributes if a tag is present in the string, nil otherwise.
     def self.attributes(tag_line)
-      m = tag_line.match(OPEN_SENT_TAG_REGEX)
-      return nil if m.nil? or m.captures.empty?
-      attr = {}
+      tag, state, attr = TextlabNLP.parse_tag(tag_line)
 
-      attr_str = m.captures.first
-      attr_str.split.each do |str|
-        id, val = str.split('=')
-        attr[id.to_sym] = TextlabOBTStat::remove_quotes(val.strip)
-      end
-
-      attr
+      attr if tag == SENT_SEG_TAG and state == :open
     end
   end
 end

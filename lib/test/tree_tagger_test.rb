@@ -24,12 +24,12 @@ class TreeTaggerTest < Test::Unit::TestCase
     assert_equal("Les\tDET:ART\tle\ntribulations\tNOM\ttribulation\nd'\tPRP\tde\nune\tDET:ART\tun\ncaissière\tNOM\tcaissier\n.\tSENT\t.",
                  out.strip)
     out = tagger.annotate(file: StringIO.new("Les tribulations d'une caissière."))
-    assert_equal([[{ word: "Les", annotation: [{ tag: "DET:ART", lemma: "le"}]},
-                   { word: "tribulations", annotation: [{ tag: "NOM", lemma: "tribulation" }]},
-                   { word: "d'", annotation: [{ tag: "PRP", lemma: "de" }]},
-                   { word: "une", annotation: [{ tag: "DET:ART", lemma: "un" }]},
-                   { word: "caissière", annotation: [{ tag: "NOM", lemma: "caissier" }]},
-                   { word: ".", annotation: [{ tag: "SENT", lemma: "."}]}]],
+    assert_equal([{ words: [{ word: "Les", annotation: [{ tag: "DET:ART", lemma: "le"}]},
+                            { word: "tribulations", annotation: [{ tag: "NOM", lemma: "tribulation" }]},
+                            { word: "d'", annotation: [{ tag: "PRP", lemma: "de" }]},
+                            { word: "une", annotation: [{ tag: "DET:ART", lemma: "un" }]},
+                            { word: "caissière", annotation: [{ tag: "NOM", lemma: "caissier" }]},
+                            { word: ".", annotation: [{ tag: "SENT", lemma: "."}]}]}],
                  out)
     tagger = TextlabNLP::TreeTagger.for_lang(:fra, encoding: :latin1)
     out = tagger.annotate(file: StringIO.new(Iconv.conv('latin1', 'utf-8', "Les tribulations d'une caissière.")),
@@ -38,18 +38,40 @@ class TreeTaggerTest < Test::Unit::TestCase
                  out.strip)
   end
 
+  def test_annotate_fra_xml
+    omit_unless(TextlabNLP::TreeTaggerConfig.lang_available?(:fra))
+    tagger = TextlabNLP::TreeTagger.for_lang(:fra)
+    out = tagger.annotate(file: StringIO.new("<s id=\"1\">\nLes tribulations d'une caissière.</s>\n<s id=\"2\">\nLes tribulations d'une caissière.</s>\n"),
+                          sent_seg: :xml)
+    assert_equal([{ id: "1",
+                    words: [{ word: "Les", annotation: [{ tag: "DET:ART", lemma: "le"}]},
+                            { word: "tribulations", annotation: [{ tag: "NOM", lemma: "tribulation" }]},
+                            { word: "d'", annotation: [{ tag: "PRP", lemma: "de" }]},
+                            { word: "une", annotation: [{ tag: "DET:ART", lemma: "un" }]},
+                            { word: "caissière", annotation: [{ tag: "NOM", lemma: "caissier" }]},
+                            { word: ".", annotation: [{ tag: "SENT", lemma: "."}]}]},
+                  { id: "2",
+                    words: [{ word: "Les", annotation: [{ tag: "DET:ART", lemma: "le"}]},
+                            { word: "tribulations", annotation: [{ tag: "NOM", lemma: "tribulation" }]},
+                            { word: "d'", annotation: [{ tag: "PRP", lemma: "de" }]},
+                            { word: "une", annotation: [{ tag: "DET:ART", lemma: "un" }]},
+                            { word: "caissière", annotation: [{ tag: "NOM", lemma: "caissier" }]},
+                            { word: ".", annotation: [{ tag: "SENT", lemma: "."}]}]}],
+                 out)
+  end
+
   def test_annotate_swe
     omit_unless(TextlabNLP::TreeTaggerConfig.lang_available?(:swe))
     tagger = TextlabNLP::TreeTagger.for_lang(:swe)
     out = tagger.annotate(file: StringIO.new("Problem med möss. Problem med möss."))
-    assert_equal([[{ word: "Problem", annotation: [{ tag: "NCNPN@IS", lemma: "problem"}] },
-                   { word: "med", annotation: [{ tag: "SPS", lemma: "med" }]},
-                   { word: "möss", annotation: [{ tag: "NCUPN@IS", lemma: "mus"}]},
-                   { word: ".", annotation: [{ tag: "FE", lemma: "." }]}],
-                  [{ word: "Problem", annotation: [{ tag: "NCNPN@IS", lemma: "problem"}] },
-                   { word: "med", annotation: [{ tag: "SPS", lemma: "med" }]},
-                   { word: "möss", annotation: [{ tag: "NCUPN@IS", lemma: "mus"}]},
-                   { word: ".", annotation: [{ tag: "FE", lemma: "." }]}]],
+    assert_equal([{ words: [{ word: "Problem", annotation: [{ tag: "NCNPN@IS", lemma: "problem"}] },
+                            { word: "med", annotation: [{ tag: "SPS", lemma: "med" }]},
+                            { word: "möss", annotation: [{ tag: "NCUPN@IS", lemma: "mus"}]},
+                            { word: ".", annotation: [{ tag: "FE", lemma: "." }]}]},
+                  { words: [{ word: "Problem", annotation: [{ tag: "NCNPN@IS", lemma: "problem"}] },
+                            { word: "med", annotation: [{ tag: "SPS", lemma: "med" }]},
+                            { word: "möss", annotation: [{ tag: "NCUPN@IS", lemma: "mus"}]},
+                            { word: ".", annotation: [{ tag: "FE", lemma: "." }]}]}],
                  out)
 
     tagger = TextlabNLP::TreeTagger.for_lang(:swe, encoding: :latin1)
@@ -66,19 +88,45 @@ class TreeTaggerTest < Test::Unit::TestCase
     json = TextlabNLP::TreeTagger.tt_to_json(tt_file)
     assert(json)
     assert_equal(2, json.count)
-    assert_equal([{ word: "Les", annotation: [{ tag: "DET:ART", lemma: "le"}]},
-                  { word: "tribulations", annotation: [{ tag: "NOM", lemma: "tribulation" }]},
-                  { word: "d'", annotation: [{ tag: "PRP", lemma: "de" }]},
-                  { word: "une", annotation: [{ tag: "DET:ART", lemma: "un" }]},
-                  { word: "caissière", annotation: [{ tag: "NOM", lemma: "caissier" }]},
-                  { word: ".", annotation: [{ tag: "SENT", lemma: "."}]}],
+    assert_equal({ words: [{ word: "Les", annotation: [{ tag: "DET:ART", lemma: "le"}]},
+                           { word: "tribulations", annotation: [{ tag: "NOM", lemma: "tribulation" }]},
+                           { word: "d'", annotation: [{ tag: "PRP", lemma: "de" }]},
+                           { word: "une", annotation: [{ tag: "DET:ART", lemma: "un" }]},
+                           { word: "caissière", annotation: [{ tag: "NOM", lemma: "caissier" }]},
+                           { word: ".", annotation: [{ tag: "SENT", lemma: "."}]}]},
                  json[0])
-    assert_equal([{ word: "Les", annotation: [{ tag: "DET:ART", lemma: "le"}]},
-                  { word: "tribulations", annotation: [{ tag: "NOM", lemma: "tribulation" }]},
-                  { word: "d'", annotation: [{ tag: "PRP", lemma: "de" }]},
-                  { word: "une", annotation: [{ tag: "DET:ART", lemma: "un" }]},
-                  { word: "caissière", annotation: [{ tag: "NOM", lemma: "caissier" }]},
-                  { word: ".", annotation: [{ tag: "SENT", lemma: "."}]}],
+    assert_equal({ words: [{ word: "Les", annotation: [{ tag: "DET:ART", lemma: "le"}]},
+                           { word: "tribulations", annotation: [{ tag: "NOM", lemma: "tribulation" }]},
+                           { word: "d'", annotation: [{ tag: "PRP", lemma: "de" }]},
+                           { word: "une", annotation: [{ tag: "DET:ART", lemma: "un" }]},
+                           { word: "caissière", annotation: [{ tag: "NOM", lemma: "caissier" }]},
+                           { word: ".", annotation: [{ tag: "SENT", lemma: "."}]}]},
+                 json[1])
+  end
+
+  def test_tt_to_json_xml
+    tt_file = StringIO.new
+    tt_file.write("<s id=\"1\">\nLes\tDET:ART\tle\ntribulations\tNOM\ttribulation\nd'\tPRP\tde\nune\tDET:ART\tun\ncaissière\tNOM\tcaissier\n.\tSENT\t.\n</s>\n")
+    tt_file.write("<s id=\"2\">\nLes\tDET:ART\tle\ntribulations\tNOM\ttribulation\nd'\tPRP\tde\nune\tDET:ART\tun\ncaissière\tNOM\tcaissier\n.\tSENT\t.\n</s>\n")
+    tt_file.rewind
+    json = TextlabNLP::TreeTagger.tt_to_json(tt_file, 'SENT', :xml)
+    assert(json)
+    assert_equal(2, json.count)
+    assert_equal({ id: "1",
+                   words: [{ word: "Les", annotation: [{ tag: "DET:ART", lemma: "le"}]},
+                           { word: "tribulations", annotation: [{ tag: "NOM", lemma: "tribulation" }]},
+                           { word: "d'", annotation: [{ tag: "PRP", lemma: "de" }]},
+                           { word: "une", annotation: [{ tag: "DET:ART", lemma: "un" }]},
+                           { word: "caissière", annotation: [{ tag: "NOM", lemma: "caissier" }]},
+                           { word: ".", annotation: [{ tag: "SENT", lemma: "."}]}]},
+                 json[0])
+    assert_equal({ id: "2",
+                   words: [{ word: "Les", annotation: [{ tag: "DET:ART", lemma: "le"}]},
+                           { word: "tribulations", annotation: [{ tag: "NOM", lemma: "tribulation" }]},
+                           { word: "d'", annotation: [{ tag: "PRP", lemma: "de" }]},
+                           { word: "une", annotation: [{ tag: "DET:ART", lemma: "un" }]},
+                           { word: "caissière", annotation: [{ tag: "NOM", lemma: "caissier" }]},
+                           { word: ".", annotation: [{ tag: "SENT", lemma: "."}]}]},
                  json[1])
   end
 end

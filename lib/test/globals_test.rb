@@ -38,4 +38,11 @@ class GlobalsTest < Test::Unit::TestCase
     assert_equal("foo", config[:obtagger][:mtag][:linux])
     assert_equal("mtag-osx64", config[:obtagger][:mtag][:osx])
   end
+
+  def test_parse_tag
+    assert_equal(["s", :open, {}], TextlabNLP.parse_tag("<s>"))
+    assert_equal(["s", :open, { id: "1" }], TextlabNLP.parse_tag("<s id=\"1\">"))
+    assert_equal(["s", :closed, nil], TextlabNLP.parse_tag("</s>"))
+    assert_equal([nil, nil, nil], TextlabNLP.parse_tag("ba"))
+  end
 end
