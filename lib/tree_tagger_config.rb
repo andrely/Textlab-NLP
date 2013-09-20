@@ -4,6 +4,8 @@ module TextlabNLP
 
   class TreeTaggerConfig
 
+    attr_reader :enc_conv
+
     # @option opts [Symbol] lang ISO-639-2 language code (:fra or :swe).
     # @option opts [Symbol] encoding Input encoding (:utf8 or :latin1).
     def initialize(opts={})
@@ -20,7 +22,31 @@ module TextlabNLP
       @config = opts[:replace_config] || @config
 
       @encoding = opts[:encoding] || :utf8
-      @lang = opts[:lang] || nil
+      @lang = opts[:lang] || raise(ArgumentError)
+
+      # See if treetagger is available in the requested encoding.
+      # If not we set up an EncodingConverter which will be passed to the shell command runner.
+      if @config[:languages][@lang][:encoding].include?(@encoding.to_s)
+        @enc_conv = nil
+        @tool_encoding = @encoding
+      else
+        @tool_encoding = prefered_encoding
+        @enc_conv = EncodingConverter.new(@encoding, @tool_encoding)
+      end
+    end
+
+    # @private
+    # @return [Symbol]
+    def prefered_encoding
+      encodings = @config[:languages][@lang][:encoding].collect { |enc| enc.to_sym }
+
+      if encodings.include?(:utf8)
+        # if possible use UTF-8
+        :utf8
+      else
+        # otherwise use the first encoding for this language in the default config
+        encodings.first
+      end
     end
 
     # @private
@@ -77,7 +103,7 @@ module TextlabNLP
       raise NotImplementedError unless lang_config
 
       cmd =
-          case @encoding
+          case @tool_encoding
             when :utf8
               lang_config[:pipeline_utf8_cmd]
             when :latin1
@@ -86,8 +112,10 @@ module TextlabNLP
               raise NotImplementedError
           end
 
-      cmd = File.join(@config[:cmd_dir], cmd)
-      cmd = File.join(path, cmd) if path
+      if cmd
+        cmd = File.join(@config[:cmd_dir], cmd)
+        cmd = File.join(path, cmd) if path
+      end
 
       cmd
     end
@@ -128,8 +156,7 @@ module TextlabNLP
     def self.lang_available?(lang, opts={})
       opts[:lang] = lang
       config = TreeTaggerConfig.new(opts)
-
-      TextlabNLP.runnable?(config.pipeline_cmd) and TextlabNLP.runnable?(config.tokenize_cmd)
+      TextlabNLP.runnable?(config.pipeline_cmd) # and TextlabNLP.runnable?(config.tokenize_cmd)
     end
   end
 end

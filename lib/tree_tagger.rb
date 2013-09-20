@@ -54,7 +54,7 @@ module TextlabNLP
       out_file.set_encoding(config.encoding)
 
       cmd = config.pipeline_cmd
-      TextlabNLP.run_shell_command(cmd, stdin_file: file, stdout_file: out_file)
+      TextlabNLP.run_shell_command(cmd, stdin_file: file, stdout_file: out_file, enc_conv: config.enc_conv)
 
       if format == :raw
         out_file.string

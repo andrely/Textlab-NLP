@@ -80,6 +80,28 @@ class TreeTaggerTest < Test::Unit::TestCase
     assert_equal(Iconv.conv('latin1', 'utf-8', "Problem\tNCNPN@IS\tproblem\nmed\tSPS\tmed\nmöss\tNCUPN@IS\tmus\n.\tFE\t."), out.strip)
   end
 
+  def test_annotate_eng
+    omit_unless(TextlabNLP::TreeTaggerConfig.lang_available?(:eng))
+    tagger = TextlabNLP::TreeTagger.for_lang(:eng)
+    out = tagger.annotate(file: StringIO.new("How are you? I'm fine."))
+    assert_equal([{ words: [{ word: 'How', annotation: [{ tag: 'WRB', lemma: 'How' }]},
+                            { word: 'are', annotation: [{ tag: 'VBP', lemma: 'be' }]},
+                            { word: 'you', annotation: [{ tag: 'PP', lemma: 'you' }]},
+                            { word: '?', annotation: [{ tag: 'SENT', lemma: '?' }]}]},
+                  { words: [{ word: 'I', annotation: [{ tag: 'PP', lemma: 'I' }]},
+                            { word: "'m", annotation: [{ tag: 'VBP', lemma: 'be' }]},
+                            { word: 'fine', annotation: [{ tag: 'JJ', lemma: 'fine' }]},
+                            { word: '.', annotation: [{ tag: 'SENT', lemma: '.' }]}]}],
+                 out)
+
+    tagger = TextlabNLP::TreeTagger.for_lang(:eng, encoding: :latin1)
+    out = tagger.annotate(file: StringIO.new(Iconv.conv('latin1', 'utf8', "How are you? I'm fine.")),
+                          format: :raw)
+    assert_equal(Iconv.conv('latin1', 'utf8',
+                            "How\tWRB\tHow\nare\tVBP\tbe\nyou\tPP\tyou\n?\tSENT\t?\nI\tPP\tI\n'm\tVBP\tbe\nfine\tJJ\tfine\n.\tSENT\t."),
+                 out.strip)
+  end
+
   def test_tt_to_json
     tt_file = StringIO.new
     tt_file.write("Les\tDET:ART\tle\ntribulations\tNOM\ttribulation\nd'\tPRP\tde\nune\tDET:ART\tun\ncaissière\tNOM\tcaissier\n.\tSENT\t.\n")

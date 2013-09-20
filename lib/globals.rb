@@ -3,6 +3,8 @@ require 'deep_merge'
 require 'open3'
 require 'io/wait'
 
+require_relative 'encoding_converter'
+
 ##
 # Global functions for managing the location and running of external components.
 
@@ -92,13 +94,14 @@ module TextlabNLP
   # @option opts [IO, NilClass] stdin_file IO instance to read input to the shell process from.
   # @option opts [IO, NilClass] stdout_file IO instance to write shell process output to.
   # @option opts [TrueClass, FalseClass] echo_output Echo stdout and stderr of the command to $stdout.
+  # @option opts [EncodingConverter] enc_conv Converter from encoding in input/output to encoding expected by process.
   # @return [Process::Status] Status of the (terminated) process.
   def TextlabNLP.run_shell_command(cmd, opts={})
     stdin_file = opts[:stdin_file] || StringIO.new
     stdout_file = opts[:stdout_file] || nil
     echo_output = opts[:echo_output] || @echo_external_command_output
+    enc_conv = opts[:enc_conv] || DummyEncodingConverter.new
 
-    # @return [Process::Status] Shell command exit status.
     err = ""
 
     stdin, stdout, stderr, thr = Open3.popen3 cmd
@@ -111,7 +114,7 @@ module TextlabNLP
 
         # wait until stdout is emptied until we try to write or hunpos-tag will block
         until stdout.ready?
-          stdin.puts(stdin_file.readline)
+          stdin.puts(enc_conv.from(stdin_file.readline))
 
           # break completely out if there is no more inout
           break if stdin_file.eof?
@@ -121,7 +124,7 @@ module TextlabNLP
 
         while stdout.ready?
           line = stdout.readline
-          stdout_file.write(line) if stdout_file
+          stdout_file.write(enc_conv.to(line)) if stdout_file
           $stdout.puts line if echo_output
         end
 
@@ -144,7 +147,7 @@ module TextlabNLP
       stdin.close
 
       # get the rest of the output
-      stdout_file.write(stdout.read)
+      stdout_file.write(enc_conv.to(stdout.read))
 
       stdout.close
 
