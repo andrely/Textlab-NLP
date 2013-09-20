@@ -7,7 +7,7 @@ module TextlabNLP
     attr_reader :enc_conv
 
     # @option opts [Symbol] lang ISO-639-2 language code (:fra or :swe).
-    # @option opts [Symbol] encoding Input encoding (:utf8 or :latin1).
+    # @option opts [String] encoding Input encoding (utf-8 or latin1).
     def initialize(opts={})
       @config = opts[:config] || nil
 
@@ -21,7 +21,7 @@ module TextlabNLP
       #noinspection RubyResolve
       @config = opts[:replace_config] || @config
 
-      @encoding = opts[:encoding] || :utf8
+      @encoding = opts[:encoding] || "utf-8"
       @lang = opts[:lang] || raise(ArgumentError)
 
       # See if treetagger is available in the requested encoding.
@@ -38,11 +38,11 @@ module TextlabNLP
     # @private
     # @return [Symbol]
     def prefered_encoding
-      encodings = @config[:languages][@lang][:encoding].collect { |enc| enc.to_sym }
+      encodings = @config[:languages][@lang][:encoding]
 
-      if encodings.include?(:utf8)
+      if encodings.include?("utf-8")
         # if possible use UTF-8
-        :utf8
+        "utf-8"
       else
         # otherwise use the first encoding for this language in the default config
         encodings.first
@@ -56,9 +56,9 @@ module TextlabNLP
 
       tokenize_bin =
           case @encoding
-            when :latin1
+            when "latin1"
               @config[:tokenize_latin1_cmd]
-            when :utf8
+            when "utf-8"
               @config[:tokenize_utf8_cmd]
             else
               raise NotImplementedError
@@ -71,9 +71,9 @@ module TextlabNLP
 
       abbrev_path =
           case @encoding
-            when :latin1
+            when "latin1"
               lang_config[:abbreviations_latin1_file] if lang_config
-            when :utf8
+            when "utf-8"
               lang_config[:abbreviations_utf8_file] if lang_config
             else
               raise NotImplementedError
@@ -104,9 +104,9 @@ module TextlabNLP
 
       cmd =
           case @tool_encoding
-            when :utf8
+            when "utf-8"
               lang_config[:pipeline_utf8_cmd]
-            when :latin1
+            when "latin1"
               lang_config[:pipeline_latin1_cmd]
             else
               raise NotImplementedError
@@ -134,9 +134,9 @@ module TextlabNLP
     # @private
     def encoding
       case @encoding
-        when :utf8
+        when "utf-8"
           Encoding.find("utf-8")
-        when :latin1
+        when "latin1"
           Encoding.find("ascii-8bit")
         else
           raise RuntimeError

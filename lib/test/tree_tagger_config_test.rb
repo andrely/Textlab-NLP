@@ -10,12 +10,12 @@ class TreeTaggerConfigTest < Test::Unit::TestCase
 
   def test_prefered_encoding
     config = TextlabNLP::TreeTaggerConfig.for_lang(:swe)
-    assert_equal(:utf8, config.prefered_encoding)
+    assert_equal("utf-8", config.prefered_encoding)
 
     config = TextlabNLP::TreeTaggerConfig.for_lang(:fra)
-    assert_equal(:utf8, config.prefered_encoding)
+    assert_equal("utf-8", config.prefered_encoding)
 
     config = TextlabNLP::TreeTaggerConfig.for_lang(:eng)
-    assert_equal(:latin1, config.prefered_encoding)
+    assert_equal("latin1", config.prefered_encoding)
   end
 end

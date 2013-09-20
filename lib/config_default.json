@@ -23,14 +23,14 @@
         "tokenize_utf8_cmd": "utf8-tokenize.perl",
         "languages": {
             "fra": {
-                "encoding": ["utf8", "latin1"],
+                "encoding": ["utf-8", "latin1"],
                 "abbreviations_latin1_file": "french-abbreviations",
                 "abbreviations_utf8_file": "french-abbreviations-utf8",
                 "pipeline_latin1_cmd": "tree-tagger-french",
                 "pipeline_utf8_cmd": "tree-tagger-french-utf8"
             },
             "swe": {
-                "encoding": ["utf8"],
+                "encoding": ["utf-8"],
                 "pipeline_latin1_cmd": "tree-tagger-swedish",
                 "pipeline_utf8_cmd": "tree-tagger-swedish-utf8",
                 "sent_tag": "FE"

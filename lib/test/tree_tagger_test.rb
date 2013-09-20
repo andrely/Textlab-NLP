@@ -31,7 +31,7 @@ class TreeTaggerTest < Test::Unit::TestCase
                             { word: "caissière", annotation: [{ tag: "NOM", lemma: "caissier" }]},
                             { word: ".", annotation: [{ tag: "SENT", lemma: "."}]}]}],
                  out)
-    tagger = TextlabNLP::TreeTagger.for_lang(:fra, encoding: :latin1)
+    tagger = TextlabNLP::TreeTagger.for_lang(:fra, encoding: "latin1")
     out = tagger.annotate(file: StringIO.new(Iconv.conv('latin1', 'utf-8', "Les tribulations d'une caissière.")),
                           format: :raw)
     assert_equal(Iconv.conv('latin1', 'utf-8', "Les\tDET:ART\tle\ntribulations\tNOM\ttribulation\nd'\tPRP\tde\nune\tDET:ART\tun\ncaissière\tNOM\tcaissier\n.\tSENT\t."),
@@ -74,7 +74,7 @@ class TreeTaggerTest < Test::Unit::TestCase
                             { word: ".", annotation: [{ tag: "FE", lemma: "." }]}]}],
                  out)
 
-    tagger = TextlabNLP::TreeTagger.for_lang(:swe, encoding: :latin1)
+    tagger = TextlabNLP::TreeTagger.for_lang(:swe, encoding: "latin1")
     out = tagger.annotate(file: StringIO.new(Iconv.conv('latin1', 'utf8', "Problem med möss.")),
                           format: :raw)
     assert_equal(Iconv.conv('latin1', 'utf-8', "Problem\tNCNPN@IS\tproblem\nmed\tSPS\tmed\nmöss\tNCUPN@IS\tmus\n.\tFE\t."), out.strip)
@@ -94,10 +94,10 @@ class TreeTaggerTest < Test::Unit::TestCase
                             { word: '.', annotation: [{ tag: 'SENT', lemma: '.' }]}]}],
                  out)
 
-    tagger = TextlabNLP::TreeTagger.for_lang(:eng, encoding: :latin1)
+    tagger = TextlabNLP::TreeTagger.for_lang(:eng, encoding: "latin1")
     out = tagger.annotate(file: StringIO.new(Iconv.conv('latin1', 'utf8', "How are you? I'm fine.")),
                           format: :raw)
-    assert_equal(Iconv.conv('latin1', 'utf8',
+    assert_equal(Iconv.conv('latin1', 'utf-8',
                             "How\tWRB\tHow\nare\tVBP\tbe\nyou\tPP\tyou\n?\tSENT\t?\nI\tPP\tI\n'm\tVBP\tbe\nfine\tJJ\tfine\n.\tSENT\t."),
                  out.strip)
   end
