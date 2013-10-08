@@ -1,6 +1,6 @@
 GIT
   remote: git@github.com:andrely/OBT-Stat.git
-  revision: 462f554bae0112ed2f39630b3515bfde44ada129
+  revision: bc7f953f6228ea4ace9f36172ba3531aca174d73
   specs:
     OBT+Stat (0.9.3)
 
