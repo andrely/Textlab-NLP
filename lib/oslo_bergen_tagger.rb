@@ -21,6 +21,8 @@ module TextlabNLP
 
     include Logging
 
+    MTAG_IN_DEBUGGER_REGEX = "^> Error: "
+
     ##
     # @option opts [Hash] config Json config overriding defaults as a Hash instance.
     #noinspection RubyResolve
@@ -112,7 +114,7 @@ module TextlabNLP
     def annotate_mtag(file, lang)
       cmd = mtag_cmd(lang)
       out = StringIO.new
-      TextlabNLP.run_shell_command(cmd, stdin_file: file, stdout_file: out)
+      TextlabNLP.run_shell_command(cmd, stdin_file: file, stdout_file: out, error_canary: MTAG_IN_DEBUGGER_REGEX)
 
       out.string
     end
@@ -121,7 +123,8 @@ module TextlabNLP
     # @private
     def annotate_obt(in_file, lang, out_file)
       cmd = "#{mtag_cmd(lang)} | #{vislcg3_cmd} -C latin1 --codepage-input utf-8 -g #{grammar_path(lang, false)} --codepage-output utf-8 --no-pass-origin -e"
-      TextlabNLP.run_shell_command(cmd, stdin_file: in_file, stdout_file: out_file)
+      TextlabNLP.run_shell_command(cmd, stdin_file: in_file, stdout_file: out_file,
+                                   error_canary: MTAG_IN_DEBUGGER_REGEX)
 
       out_file
     end
@@ -148,12 +151,18 @@ module TextlabNLP
       end
 
       if lang == :bm
-        "#{mtag_path} -wxml"
+        cmd = "#{mtag_path} -wxml"
       elsif lang == :nn
-        "#{mtag_path} -wxml -nno"
+        cmd = "#{mtag_path} -wxml -nno"
       else
         raise NotImplementedError
       end
+
+      if platform == :linux or platform == :osx
+        cmd += " | tee /dev/stderr"
+      end
+
+      cmd
     end
 
     ##

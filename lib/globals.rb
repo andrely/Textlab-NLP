@@ -12,6 +12,7 @@ module TextlabNLP
   ##
   # Error type for malformed config files or values.
   class ConfigError < StandardError; end
+  class RunawayProcessError < StandardError; end
 
   # Location of file containing config defaults
   CONFIG_DEFAULT_FN = 'lib/config_default.json'
@@ -95,12 +96,17 @@ module TextlabNLP
   # @option opts [IO, NilClass] stdout_file IO instance to write shell process output to.
   # @option opts [TrueClass, FalseClass] echo_output Echo stdout and stderr of the command to $stdout.
   # @option opts [EncodingConverter] enc_conv Converter from encoding in input/output to encoding expected by process.
+  # @option opts [String] error_canary If stderr output matches the canary regex the process is assumed to have failed
+  #   and is terminated (used by f.ex. OsloBergenTagger to terminate failed mtag processes).
   # @return [Process::Status] Status of the (terminated) process.
+  # @raise [RunawayProcessError] if the error canary is detected on stdout.
   def TextlabNLP.run_shell_command(cmd, opts={})
     stdin_file = opts[:stdin_file] || StringIO.new
     stdout_file = opts[:stdout_file] || nil
+    stderr_file = opts[:stderr_file] || nil
     echo_output = opts[:echo_output] || @echo_external_command_output
     enc_conv = opts[:enc_conv] || DummyEncodingConverter.new
+    canary = opts[:error_canary] || nil
 
     err = ""
 
@@ -120,43 +126,67 @@ module TextlabNLP
           break if stdin_file.eof?
         end
 
-        break if stdin_file.eof?
-
         while stdout.ready?
           line = stdout.readline
+
           stdout_file.write(enc_conv.to(line)) if stdout_file
           $stdout.puts line if echo_output
         end
 
         while stderr.ready?
           line = stderr.readline
-          err += line
+
+          if canary and line.match(canary)
+            thr.exit
+            raise RunawayProcessError
+          end
+
+          stderr_file.write(enc_conv.to(line)) if stderr_file
           $stderr.puts line if echo_output
         end
+
+        break if stdin_file.eof?
       end
 
-      rescue Errno::EPIPE => e
-        # if we are here the cmd exited early on us
-        # dump stderr
-        err += stderr.read
-        $stderr.puts(err) if echo_output
-
-        raise e
-      end
-
-      stdin.close
-
-      # get the rest of the output
-      stdout_file.write(enc_conv.to(stdout.read))
-
-      stdout.close
-
+    rescue Errno::EPIPE => e
+      # if we are here the cmd exited early on us
+      # dump stderr
       err += stderr.read
       $stderr.puts(err) if echo_output
-      stderr.close
 
-      # wait and get get Process::Status
-      s = thr.value
+      raise e
+    end
+
+    stdin.close
+
+    # get the rest of the output
+    # make sure we wait until output is produced by process
+    while thr.alive?
+      if stderr.ready?
+        line = stderr.readline
+
+        if canary and line.match(canary)
+          thr.exit
+          raise RunawayProcessError
+        end
+
+        stderr_file.write(enc_conv.to(line)) if stderr_file
+        $stderr.puts line if echo_output
+      end
+
+      if stdout.ready?
+        line = stdout.readline
+
+        stdout_file.write(enc_conv.to(line)) if stdout_file
+        $stdout.puts line if echo_output
+      end
+    end
+
+    stderr.close
+    stdout.close
+
+    # wait and get get Process::Status
+    s = thr.value
 
     return s
   end

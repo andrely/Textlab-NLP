@@ -56,17 +56,17 @@ class OsloBergenTaggerTest < Test::Unit::TestCase
 
   def test_mtag_cmd
     tagger = TextlabNLP::OsloBergenTagger.new(replace_config: TextlabNLP.default_config[:obtagger], platform: :osx)
-    assert_equal("mtag-osx64 -wxml", tagger.mtag_cmd)
-    assert_equal("mtag-osx64 -wxml", tagger.mtag_cmd(:bm))
-    assert_equal("mtag-osx64 -wxml -nno", tagger.mtag_cmd(:nn))
+    assert_equal("mtag-osx64 -wxml | tee /dev/stderr", tagger.mtag_cmd)
+    assert_equal("mtag-osx64 -wxml | tee /dev/stderr", tagger.mtag_cmd(:bm))
+    assert_equal("mtag-osx64 -wxml -nno | tee /dev/stderr", tagger.mtag_cmd(:nn))
     assert_raise(NotImplementedError) do
       tagger.mtag_cmd(:bork)
     end
 
     tagger = TextlabNLP::OsloBergenTagger.new(replace_config: TextlabNLP.default_config[:obtagger], platform: :linux)
-    assert_equal("mtag-linux -wxml", tagger.mtag_cmd)
-    assert_equal("mtag-linux -wxml", tagger.mtag_cmd(:bm))
-    assert_equal("mtag-linux -wxml -nno", tagger.mtag_cmd(:nn))
+    assert_equal("mtag-linux -wxml | tee /dev/stderr", tagger.mtag_cmd)
+    assert_equal("mtag-linux -wxml | tee /dev/stderr", tagger.mtag_cmd(:bm))
+    assert_equal("mtag-linux -wxml -nno | tee /dev/stderr", tagger.mtag_cmd(:nn))
     assert_raise(NotImplementedError) do
       tagger.mtag_cmd(:bork)
     end
@@ -184,5 +184,23 @@ class OsloBergenTaggerTest < Test::Unit::TestCase
                             annotation: [{ tag: "clb <punkt>", lemma: "$."}]}]}]
     out = tagger.annotate(file: StringIO.new("Hallo i luken.\nVi drar til sjøs.\n"), format: :json, disambiguate: true)
     assert_equal(expected, out)
+  end
+
+  def test_runaway_mtag
+    tagger = TextlabNLP::OsloBergenTagger.new
+    omit_unless(tagger.available?, "Oslo-Bergen tagger not configured correctly")
+    assert_raise_kind_of(TextlabNLP::RunawayProcessError) do
+      tagger.annotate(file: StringIO.new("Hallo i luken.\n\n"), format: :raw, mtag_only: true)
+    end
+    end
+
+  def test_runaway_obt
+    tagger = TextlabNLP::OsloBergenTagger.new
+    omit_unless(tagger.available?, "Oslo-Bergen tagger not configured correctly")
+
+    assert_raise_kind_of(TextlabNLP::RunawayProcessError) do
+      tagger.annotate(file: StringIO.new("Hallo i luken.\n\n"), format: :raw)
+      tagger.annotate(file: StringIO.new("Hallo i luken.\n\n"), format: :raw, disambiguate: true)
+    end
   end
 end
