@@ -31,7 +31,7 @@ module TextlabNLP
   #
   # @return [String]
   def TextlabNLP.root_path()
-    root = File.join(File.dirname(__FILE__), "..")
+    root = File.join(File.dirname(__FILE__), "..", "..")
     root = File.absolute_path(root)
 
     return root

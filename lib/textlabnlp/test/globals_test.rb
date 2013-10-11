@@ -6,7 +6,7 @@ require_relative '../globals'
 
 class GlobalsTest < Test::Unit::TestCase
   def test_root_path
-    cur_root = File.absolute_path(File.join(File.dirname(__FILE__), '../..'))
+    cur_root = File.absolute_path(File.join(File.dirname(__FILE__), '..', '..', '..'))
 
     assert_equal(cur_root, TextlabNLP.root_path)
   end
