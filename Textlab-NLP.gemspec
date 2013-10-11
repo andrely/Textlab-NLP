@@ -6,10 +6,7 @@ Gem::Specification.new do |s|
   s.description = 'Textlaboratory shared library.'
   s.authors = ['Andre Lynum']
   s.email = 'andrely@idi.ntnu.no'
-  s.files = ['lib/globals.rb',
-             'lib/logger_mixin.rb',
-             'lib/oslo_bergen_tagger.rb',
-             'lib/obt_format_reader.rb']
+  s.files = Dir['textlabnlp/lib/*.rb'] + ['lib/config_default.json']
   s.homepage = ''
   s.license = ''
   s.add_dependency('deep_merge', ">=1.0")
