@@ -10,6 +10,42 @@ require_relative 'logger_mixin'
 require_relative 'obt_format_reader'
 
 module TextlabNLP
+  # This class provides a wrapper for IO like objects that performs filtering on the stream that removes input
+  # that triggers known mtag bugs. It currently does the following filtering:
+  #
+  # - Removes empty lines. This is only a problem if it is the last line, but all empty lines is removed to avoid
+  #   peeking ahead since this should give the same output.
+  class OBTFilteredReader
+
+    attr_reader :io
+
+    # @param [IO] io Underlying input stream to OBT.
+    def initialize(io)
+      @io = io
+    end
+
+    # @return [TrueClass, FalseClass]
+    def eof?
+      self.io.eof?
+    end
+
+    # @return [String]
+    def readline
+      line = self.io.readline
+
+      while line.strip == ""
+        line = self.io.readline
+      end
+
+      line
+    end
+
+    # @return [NilClass]
+    def close
+      self.io.close unless self.io.closed?
+    end
+  end
+
   ##
   # Class for running the Oslo-Bergen part of speech tagger command line pipeline.
   # @note Not fully implemented
@@ -48,6 +84,7 @@ module TextlabNLP
     # @option opts [Symbol] lang Parse Bokmal (:bm) or Nynorsk (:nn).
     # @option opts [TrueClass, FalseClass] disambiguate Disambiguate ouptput using OBT-Stat.
     # @option opts [Symbol] sent_seg Sentence segmentation method (:static, :mtag, :xml)
+    # @option opts [TrueClass, FalseClass] filter Normalize input stream to avoid mtag bugs.
     # @return [String, Array]
     # @todo implement as iterable
     def annotate(opts={})
@@ -57,9 +94,14 @@ module TextlabNLP
       file = opts[:file] || nil
       lang = opts[:lang] || :bm
       sent_seg = opts[:sent_seg] || :static
+      filter = opts.include?(:filter) ? opts[:filter] : true
 
       # IO instance is only input for now
       raise NotImplementedError if file.nil?
+
+      if filter
+        file = OBTFilteredReader.new(file)
+      end
 
       # @todo clean up the actual annotation code
       if mtag_only

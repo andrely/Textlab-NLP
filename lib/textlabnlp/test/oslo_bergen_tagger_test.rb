@@ -190,7 +190,7 @@ class OsloBergenTaggerTest < Test::Unit::TestCase
     tagger = TextlabNLP::OsloBergenTagger.new
     omit_unless(tagger.available?, "Oslo-Bergen tagger not configured correctly")
     assert_raise_kind_of(TextlabNLP::RunawayProcessError) do
-      tagger.annotate(file: StringIO.new("Hallo i luken.\n\n"), format: :raw, mtag_only: true)
+      tagger.annotate(file: StringIO.new("Hallo i luken.\n\n"), format: :raw, mtag_only: true, filter: false)
     end
     end
 
@@ -199,8 +199,8 @@ class OsloBergenTaggerTest < Test::Unit::TestCase
     omit_unless(tagger.available?, "Oslo-Bergen tagger not configured correctly")
 
     assert_raise_kind_of(TextlabNLP::RunawayProcessError) do
-      tagger.annotate(file: StringIO.new("Hallo i luken.\n\n"), format: :raw)
-      tagger.annotate(file: StringIO.new("Hallo i luken.\n\n"), format: :raw, disambiguate: true)
+      tagger.annotate(file: StringIO.new("Hallo i luken.\n\n"), format: :raw, filter: false)
+      tagger.annotate(file: StringIO.new("Hallo i luken.\n\n"), format: :raw, disambiguate: true, filter: false)
     end
   end
 end

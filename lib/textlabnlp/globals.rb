@@ -120,10 +120,12 @@ module TextlabNLP
 
         # wait until stdout is emptied until we try to write or hunpos-tag will block
         until stdout.ready?
-          stdin.puts(enc_conv.from(stdin_file.readline))
-
-          # break completely out if there is no more inout
-          break if stdin_file.eof?
+          begin
+            line = stdin_file.readline
+            stdin.puts(enc_conv.from(line))
+          rescue EOFError
+            break
+          end
         end
 
         while stdout.ready?
@@ -157,6 +159,7 @@ module TextlabNLP
       raise e
     end
 
+    # @todo should be done by outside caller?
     stdin.close
 
     # get the rest of the output
@@ -182,6 +185,7 @@ module TextlabNLP
       end
     end
 
+    # @todo should be done by outside caller?
     stderr.close
     stdout.close
 
