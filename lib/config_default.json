@@ -19,6 +19,9 @@
     "treetagger": {
         "cmd_dir": "cmd",
         "lib_dir": "lib",
+        "bin_dir": "bin",
+        "train_bin": "train-tree-tagger",
+        "tag_bin": "tree-tagger",
         "tokenize_latin1_cmd": "tokenize.pl",
         "tokenize_utf8_cmd": "utf8-tokenize.perl",
         "languages": {

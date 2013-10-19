@@ -45,4 +45,19 @@ class GlobalsTest < Test::Unit::TestCase
     assert_equal(["s", :closed, nil], TextlabNLP.parse_tag("</s>"))
     assert_equal([nil, nil, nil], TextlabNLP.parse_tag("ba"))
   end
+
+  def test_io_like?
+    assert_true(TextlabNLP.io_like?(IO.new(2)))
+    assert_true(TextlabNLP.io_like?(StringIO.new()))
+    assert_true(TextlabNLP.io_like?(File.new(2)))
+    assert_false(TextlabNLP.io_like?(''))
+  end
+
+  def test_copy
+    from = StringIO.new('ba')
+    to = StringIO.new
+    result = TextlabNLP.copy(from, to)
+    assert_equal('ba', result.string)
+    assert_equal('ba', to.string)
+  end
 end

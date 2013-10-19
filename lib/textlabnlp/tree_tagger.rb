@@ -1,4 +1,10 @@
+require 'tmpdir'
+require 'stringio'
+
+require 'deep_merge'
+
 require_relative 'tree_tagger_config'
+require_relative 'globals'
 
 module TextlabNLP
 
@@ -53,7 +59,16 @@ module TextlabNLP
 
       out_file.set_encoding(config.encoding)
 
-      cmd = config.pipeline_cmd
+      # Ask the configuration instance for the command to run
+      if config.type == :param_file
+        cmd = config.tag_cmd
+      elsif config.type == :lang_pipeline
+        cmd = config.pipeline_cmd
+      else
+        raise ArgumentError
+      end
+
+      Logging.logger.info("Running TreeTagger command #{cmd}")
       TextlabNLP.run_shell_command(cmd, stdin_file: file, stdout_file: out_file, enc_conv: config.enc_conv)
 
       if format == :raw

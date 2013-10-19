@@ -9,6 +9,14 @@ require_relative '../tree_tagger'
 require_relative '../globals'
 
 class TreeTaggerTest < Test::Unit::TestCase
+
+  LEX_DATA = "x\t0 X\t1 X\ny\t0 Y\n13\td D\n.\tSENT ."
+  OPEN_DATA = "1 0 d"
+  TRAIN_DATA = "x\t1\ny\t0\nx\t0\nx\t1\n.\tSENT\nx\t1\nx\t1\ny\t0\nx\t1\n13\td\n.\tSENT"
+  IN_DATA = "x\ny\nx\nx\n.\nx\nx\ny\nx\n13\n."
+  EXPECTED_DATA = "x\t1\tX\ny\t0\tY\nx\t1\tX\nx\t1\tX\n.\tSENT\t.\nx\t1\tX\nx\t1\tX\ny\t0\tY\nx\t1\tX\n13\td\tD\n.\tSENT\t.\n"
+
+
   def test_tokenize
     omit_unless(TextlabNLP::TreeTaggerConfig.lang_available?(:fra))
     tagger = TextlabNLP::TreeTagger.for_lang(:fra)
@@ -150,5 +158,18 @@ class TreeTaggerTest < Test::Unit::TestCase
                            { word: "caissière", annotation: [{ tag: "NOM", lemma: "caissier" }]},
                            { word: ".", annotation: [{ tag: "SENT", lemma: "."}]}]},
                  json[1])
+  end
+
+  def test_tree_tagger_model
+    Dir.mktmpdir('textlabnlp-test') do |dir|
+      model_fn = File.join(dir, 'tt_model')
+
+      config = TextlabNLP::TreeTaggerConfig.train(StringIO.new(TRAIN_DATA), StringIO.new(OPEN_DATA),
+                                                  StringIO.new(LEX_DATA), model_fn)
+      tagger = TextlabNLP::TreeTagger.new(config: config)
+
+      out = tagger.annotate(file: StringIO.new(IN_DATA), format: :raw)
+      assert_equal(EXPECTED_DATA, out)
+    end
   end
 end

@@ -1,15 +1,19 @@
 require_relative 'globals'
+require_relative 'logger_mixin'
 
 module TextlabNLP
 
   class TreeTaggerConfig
 
-    attr_reader :enc_conv
+    include Logging
+
+    attr_reader :enc_conv, :type
 
     # @option opts [Symbol] lang ISO-639-2 language code (:fra or :swe).
     # @option opts [String] encoding Input encoding (utf-8 or latin1).
     def initialize(opts={})
       @config = opts[:config] || nil
+      @type = opts[:type]
 
       if @config
         @config = @config.deep_merge(TextlabNLP.config[:treetagger])
@@ -22,16 +26,23 @@ module TextlabNLP
       @config = opts[:replace_config] || @config
 
       @encoding = opts[:encoding] || "utf-8"
-      @lang = opts[:lang] || raise(ArgumentError)
+      @lang = opts[:lang] || nil
+      @model_fn = opts[:model_fn] || nil
+
+      unless @model_fn or @config[:languages].has_key?(@lang)
+        raise ArgumentError
+      end
 
       # See if treetagger is available in the requested encoding.
       # If not we set up an EncodingConverter which will be passed to the shell command runner.
-      if @config[:languages][@lang][:encoding].include?(@encoding.to_s)
-        @enc_conv = nil
-        @tool_encoding = @encoding
-      else
-        @tool_encoding = prefered_encoding
-        @enc_conv = EncodingConverter.new(@encoding, @tool_encoding)
+      unless @model_fn
+        if @config[:languages][@lang][:encoding].include?(@encoding.to_s)
+          @enc_conv = nil
+          @tool_encoding = @encoding
+        else
+          @tool_encoding = prefered_encoding
+          @enc_conv = EncodingConverter.new(@encoding, @tool_encoding)
+        end
       end
     end
 
@@ -121,6 +132,12 @@ module TextlabNLP
     end
 
     # @private
+    def tag_cmd
+      bin = File.join(@config[:path], @config[:bin_dir], @config[:tag_bin])
+      "#{bin} -token -lemma -sgml #{@model_fn}"
+    end
+
+    # @private
     def sent_tag
       lang_config = @config[:languages][@lang]
 
@@ -150,6 +167,7 @@ module TextlabNLP
     # @return [TreeTaggerConfig]
     def self.for_lang(lang, opts={})
       opts[:lang] = lang
+      opts[:type] = :lang_pipeline
       TreeTaggerConfig.new(opts)
     end
 
@@ -157,6 +175,59 @@ module TextlabNLP
       opts[:lang] = lang
       config = TreeTaggerConfig.new(opts)
       TextlabNLP.runnable?(config.pipeline_cmd) # and TextlabNLP.runnable?(config.tokenize_cmd)
+    end
+
+    # Train a TreeTagger model from training data files and return a TreeTaggerConfig instance
+    # for running the model.
+    #
+    # @param [Object] train Treetagger formatted training file/IO like.
+    # @param [Object] open Treetagger open class file/IO like.
+    # @param [Object] lexicon Treetagger lexicon file/IO like.
+    # @param [Object] model_fn File to write the TreeTagger model to.
+    # @option opts [String] encoding Training data/model encoding
+    # @option opts [Hash] config
+    # @option opts [Symbol] lang
+    #
+    # @return [TreeTaggerConfig]
+    def self.train(train, open, lexicon, model_fn, opts={})
+      encoding = opts[:encoding] || 'utf-8'
+      config = opts[:config] || {}
+      lang = opts[:lang] || nil
+
+      config = config.deep_merge(TextlabNLP.config[:treetagger])
+
+      if [train, open, lexicon].detect { |f| TextlabNLP.io_like?(f) }
+        Dir.mktmpdir('textlabnlp') do |dir|
+          if TextlabNLP.io_like?(train)
+            train = TextlabNLP.copy(train, File.join(dir, 'train'))
+          end
+
+          if TextlabNLP.io_like?(open)
+            open = TextlabNLP.copy(open, File.join(dir, 'open'))
+          end
+
+          if TextlabNLP.io_like?(lexicon)
+            lexicon = TextlabNLP.copy(lexicon, File.join(dir, 'lexicon'))
+          end
+
+          self.train(train, open, lexicon, model_fn, opts)
+        end
+      else
+        bin = File.join(config[:path], config[:bin_dir], config[:train_bin])
+
+        if encoding == 'utf-8'
+          bin += " -utf8"
+        end
+
+        cmd = "#{bin} #{lexicon} #{open} #{train} #{model_fn}"
+
+        Logging.logger.info("Training TreeTagger model with command #{cmd}")
+
+        TextlabNLP.run_shell_command(cmd)
+
+        TreeTaggerConfig.new(config: config, model_fn: model_fn,
+                             lang: lang, encoding: encoding, type: :param_file)
+      end
     end
   end
 end

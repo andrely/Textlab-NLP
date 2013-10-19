@@ -2,6 +2,7 @@ require 'json'
 require 'deep_merge'
 require 'open3'
 require 'io/wait'
+require 'stringio'
 
 require_relative 'encoding_converter'
 
@@ -255,5 +256,39 @@ module TextlabNLP
     end
 
     return nil, nil, nil
+  end
+
+  # Returns True if the object is "IO like", ie. it can be passed off for our limited purposes
+  # as an IO instance.
+  #
+  # @param [Object] object
+  # @return [TrueClass, FalseClass]
+  def TextlabNLP.io_like?(f)
+    f.kind_of?(IO) or f.kind_of?(StringIO)
+  end
+
+  # Copies the content of from to to, which can be filenames or "IO like" instances.
+  #
+  # @param [String, IO, StringIO] from
+  # @param [String, IO, StringIO] to
+  # @return [String, IO, StringIO] The instance passed as the to argument.
+  def TextlabNLP.copy(from, to)
+    if not io_like?(from)
+      File.open(from) do |f|
+        copy(f, to)
+      end
+
+      to
+    elsif not io_like?(to)
+      File.open(to, 'w') do |f|
+        copy(from, f)
+      end
+
+      to
+    else
+      to.write(from.read)
+
+      to
+    end
   end
 end
