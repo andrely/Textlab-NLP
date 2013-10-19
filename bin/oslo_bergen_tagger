@@ -1,0 +1,14 @@
+#!/usr/bin/env ruby
+
+require 'textlabnlp/oslo_bergen_tagger'
+require 'textlabnlp/globals'
+
+tagger = TextlabNLP::OsloBergenTagger.new
+
+begin
+  out = tagger.annotate(file: $stdin, format: :raw, disambiguate: true)
+rescue TextlabNLP::RunawayProcessError
+  $stderr.puts "mtag crashed"
+end
+
+$stdout.write(out)

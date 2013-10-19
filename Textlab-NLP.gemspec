@@ -7,6 +7,7 @@ Gem::Specification.new do |s|
   s.authors = ['Andre Lynum']
   s.email = 'andrely@idi.ntnu.no'
   s.files = Dir['textlabnlp/lib/*.rb'] + ['lib/config_default.json']
+  s.executables = ['oslo_bergen_tagger']
   s.homepage = ''
   s.license = ''
   s.add_dependency('deep_merge', ">=1.0")
