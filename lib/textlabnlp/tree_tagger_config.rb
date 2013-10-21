@@ -123,18 +123,37 @@ module TextlabNLP
               raise NotImplementedError
           end
 
-      if cmd
-        cmd = File.join(@config[:cmd_dir], cmd)
-        cmd = File.join(path, cmd) if path
+      if path
+        File.join(path, @config[:cmd_dir], cmd) if path
+      else
+        cmd
       end
-
-      cmd
     end
 
     # @private
     def tag_cmd
-      bin = File.join(@config[:path], @config[:bin_dir], @config[:tag_bin])
+      if @config[:path]
+        bin = File.join(@config[:path], @config[:bin_dir], @config[:tag_bin])
+      else
+        bin = @config[:tag_bin]
+      end
+
       "#{bin} -token -lemma -sgml #{@model_fn}"
+    end
+
+    # @private
+    def self.train_cmd(config, encoding)
+      if config[:path]
+        cmd = File.join(config[:path], config[:bin_dir], config[:train_bin])
+      else
+        cmd = config[:train_bin]
+      end
+
+      if encoding == 'utf-8'
+        cmd += " -utf8"
+      end
+
+      cmd
     end
 
     # @private
@@ -213,13 +232,7 @@ module TextlabNLP
           self.train(train, open, lexicon, model_fn, opts)
         end
       else
-        bin = File.join(config[:path], config[:bin_dir], config[:train_bin])
-
-        if encoding == 'utf-8'
-          bin += " -utf8"
-        end
-
-        cmd = "#{bin} #{lexicon} #{open} #{train} #{model_fn}"
+        cmd = "#{train_cmd(config, encoding)} #{lexicon} #{open} #{train} #{model_fn}"
 
         Logging.logger.info("Training TreeTagger model with command #{cmd}")
 
