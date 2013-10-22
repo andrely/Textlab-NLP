@@ -122,7 +122,7 @@ module TextlabNLP
         until stdout.ready? or stdin_file.eof?
           begin
             in_data = stdin_file.readpartial(4096)
-            stdin.puts(enc_conv.from(in_data))
+            stdin.write(enc_conv.from(in_data))
           rescue EOFError
             break
           end
@@ -132,7 +132,7 @@ module TextlabNLP
           out_data = stdout.readpartial(4096)
 
           stdout_file.write(enc_conv.to(out_data)) if stdout_file
-          $stdout.puts out_data if echo_output
+          $stdout.write out_data if echo_output
         end
 
         while stderr.ready?
@@ -156,7 +156,7 @@ module TextlabNLP
           end
 
           stderr_file.write(enc_conv.to(err_data)) if stderr_file
-          $stderr.puts err_data if echo_output
+          $stderr.write err_data if echo_output
         end
 
         break if stdin_file.eof?
@@ -198,14 +198,14 @@ module TextlabNLP
         end
 
         stderr_file.write(enc_conv.to(err_data)) if stderr_file
-        $stderr.puts err_data if echo_output
+        $stderr.write err_data if echo_output
       end
 
       while stdout.ready?
         out_data = stdout.readpartial(4096)
 
         stdout_file.write(enc_conv.to(out_data)) if stdout_file
-        $stdout.puts out_data if echo_output
+        $stdout.write out_data if echo_output
       end
     end
 
