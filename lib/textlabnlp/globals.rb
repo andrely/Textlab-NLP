@@ -20,6 +20,8 @@ module TextlabNLP
   # Default location of file containing default config overrides.
   CONFIG_FN = 'lib/config.json'
 
+  IO_BUF_SIZE = 4096
+
   # Default setting for echoing of external command output to stdout/stderr.
   @echo_external_command_output = false
 
@@ -121,24 +123,38 @@ module TextlabNLP
         # wait until stdout is emptied until we try to write or hunpos-tag will block
         until stdout.ready? or stdin_file.eof?
           begin
-            in_data = stdin_file.readpartial(4096)
-            stdin.write(enc_conv.from(in_data))
+            in_data = stdin_file.readpartial(IO_BUF_SIZE)
+
+            # non-blocking write to avoid blocking when runnning tree-tagger
+            # keep track of written characters to make sure everything is written
+            # and catch WaitWritable to make sure stdin is ready for writing
+            written = 0
+
+            while written < in_data.length
+              begin
+                written += stdin.write_nonblock(enc_conv.from(in_data)[written..-1])
+              rescue IO::WaitWritable, Errno::EINTR
+                IO.select(nil, [stdin])
+                retry
+              end
+            end
           rescue EOFError
             break
           end
         end
 
         while stdout.ready?
-          out_data = stdout.readpartial(4096)
+          out_data = stdout.readpartial(IO_BUF_SIZE)
 
           stdout_file.write(enc_conv.to(out_data)) if stdout_file
           $stdout.write out_data if echo_output
         end
 
         while stderr.ready?
-          err_data = stderr.readpartial(4096)
+          err_data = stderr.readpartial(IO_BUF_SIZE)
 
           if canary
+            # split lines and connect together with next read if necessary
             lines = (stderr_rest + err_data).split("\n")
 
             if err_data[-1] == "\n"
@@ -178,9 +194,10 @@ module TextlabNLP
     # make sure we wait until output is produced by process
     while thr.alive?
       while stderr.ready?
-        err_data = stderr.readpartial(4096)
+        err_data = stderr.readpartial(IO_BUF_SIZE)
 
         if canary
+          # see comment in similar block above
           lines = (stderr_rest + err_data).split("\n")
 
           if err_data[-1] == "\n"
@@ -202,7 +219,7 @@ module TextlabNLP
       end
 
       while stdout.ready?
-        out_data = stdout.readpartial(4096)
+        out_data = stdout.readpartial(IO_BUF_SIZE)
 
         stdout_file.write(enc_conv.to(out_data)) if stdout_file
         $stdout.write out_data if echo_output
