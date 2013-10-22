@@ -44,6 +44,13 @@ module TextlabNLP
     def close
       self.io.close unless self.io.closed?
     end
+
+    # @param [Integer] len
+    # @return [String]
+    def readpartial(len)
+      data = self.io.readpartial(len)
+      data.gsub!(/\n+/, "\n")
+    end
   end
 
   ##

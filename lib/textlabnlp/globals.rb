@@ -109,9 +109,8 @@ module TextlabNLP
     enc_conv = opts[:enc_conv] || DummyEncodingConverter.new
     canary = opts[:error_canary] || nil
 
-    err = ""
-
     stdin, stdout, stderr, thr = Open3.popen3 cmd
+    stderr_rest = ""
 
 
     # read and write stdin/stdout/stderr to avoid deadlocking on processes that blocks on writing.
@@ -120,32 +119,44 @@ module TextlabNLP
       until stdin_file.eof?
 
         # wait until stdout is emptied until we try to write or hunpos-tag will block
-        until stdout.ready?
+        until stdout.ready? or stdin_file.eof?
           begin
-            line = stdin_file.readline
-            stdin.puts(enc_conv.from(line))
+            in_data = stdin_file.readpartial(4096)
+            stdin.puts(enc_conv.from(in_data))
           rescue EOFError
             break
           end
         end
 
         while stdout.ready?
-          line = stdout.readline
+          out_data = stdout.readpartial(4096)
 
-          stdout_file.write(enc_conv.to(line)) if stdout_file
-          $stdout.puts line if echo_output
+          stdout_file.write(enc_conv.to(out_data)) if stdout_file
+          $stdout.puts out_data if echo_output
         end
 
         while stderr.ready?
-          line = stderr.readline
+          err_data = stderr.readpartial(4096)
 
-          if canary and line.match(canary)
-            thr.exit
-            raise RunawayProcessError
+          if canary
+            lines = (stderr_rest + err_data).split("\n")
+
+            if err_data[-1] == "\n"
+              stderr_rest = ""
+            else
+              stderr_rest = lines.pop
+            end
+
+            lines.each do |line|
+              if line.match(canary)
+                thr.exit
+                raise RunawayProcessError
+              end
+            end
           end
 
-          stderr_file.write(enc_conv.to(line)) if stderr_file
-          $stderr.puts line if echo_output
+          stderr_file.write(enc_conv.to(err_data)) if stderr_file
+          $stderr.puts err_data if echo_output
         end
 
         break if stdin_file.eof?
@@ -166,23 +177,35 @@ module TextlabNLP
     # get the rest of the output
     # make sure we wait until output is produced by process
     while thr.alive?
-      if stderr.ready?
-        line = stderr.readline
+      while stderr.ready?
+        err_data = stderr.readpartial(4096)
 
-        if canary and line.match(canary)
-          thr.exit
-          raise RunawayProcessError
+        if canary
+          lines = (stderr_rest + err_data).split("\n")
+
+          if err_data[-1] == "\n"
+            stderr_rest = ""
+          else
+            stderr_rest = lines.pop
+          end
+
+          lines.each do |line|
+            if line.match(canary)
+              thr.exit
+              raise RunawayProcessError
+            end
+          end
         end
 
-        stderr_file.write(enc_conv.to(line)) if stderr_file
-        $stderr.puts line if echo_output
+        stderr_file.write(enc_conv.to(err_data)) if stderr_file
+        $stderr.puts err_data if echo_output
       end
 
-      if stdout.ready?
-        line = stdout.readline
+      while stdout.ready?
+        out_data = stdout.readpartial(4096)
 
-        stdout_file.write(enc_conv.to(line)) if stdout_file
-        $stdout.puts line if echo_output
+        stdout_file.write(enc_conv.to(out_data)) if stdout_file
+        $stdout.puts out_data if echo_output
       end
     end
 
