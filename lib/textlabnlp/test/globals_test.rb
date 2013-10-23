@@ -60,4 +60,23 @@ class GlobalsTest < Test::Unit::TestCase
     assert_equal('ba', result.string)
     assert_equal('ba', to.string)
   end
+
+  def test_run_shell_cmd
+    # pretend we're in a unixy place
+    status = TextlabNLP.run_shell_command('ls')
+    assert_equal 0, status.exitstatus
+
+    in_str = "ba\nfoo\nbork\nknark\n"
+    in_file = StringIO.new(in_str)
+    out_file = StringIO.new
+    status = TextlabNLP.run_shell_command('cat', stdin_file: in_file, stdout_file: out_file)
+    assert_equal 0, status.exitstatus
+    assert_equal in_file.string, out_file.string
+
+    out_file = StringIO.new
+    status = TextlabNLP.run_shell_command('echo foo', stdout_file: out_file)
+    assert_equal(0, status.exitstatus)
+    assert_equal(out_file.string, "foo\n")
+  end
+
 end
