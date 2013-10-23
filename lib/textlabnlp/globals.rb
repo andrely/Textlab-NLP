@@ -90,7 +90,7 @@ module TextlabNLP
   ##
   # Runs an external shell command.
   #
-  # @todo This needs more cleaning up.
+  # @todo Refactor this into separate class.
   # @todo Generalize the push/pull of IO instances for general use.
   #
   # @param cmd [String] The shell command string. Should not include pipes.
@@ -103,6 +103,7 @@ module TextlabNLP
   #   and is terminated (used by f.ex. OsloBergenTagger to terminate failed mtag processes).
   # @return [Process::Status] Status of the (terminated) process.
   # @raise [RunawayProcessError] if the error canary is detected on stdout.
+  #noinspection RubyEmptyRescueBlockInspection
   def TextlabNLP.run_shell_command(cmd, opts={})
     stdin_file = opts[:stdin_file] || StringIO.new
     stdout_file = opts[:stdout_file] || nil
@@ -112,70 +113,86 @@ module TextlabNLP
     canary = opts[:error_canary] || nil
 
     stdin, stdout, stderr, thr = Open3.popen3 cmd
+
+    # buffers for data that can't be entirely written to the next stream
     stderr_rest = ""
+    stdin_data  = ""
+
+    stdout_handler = Proc.new do
+      out_data = stdout.readpartial(IO_BUF_SIZE)
+
+      stdout_file.write(enc_conv.to(out_data)) if stdout_file
+      $stdout.write out_data if echo_output
+    end
+
+    stderr_handler = Proc.new do
+      err_data = stderr.readpartial(IO_BUF_SIZE)
+
+      if canary
+        # split lines and connect together with next read if necessary
+        lines = (stderr_rest + err_data).split("\n")
+
+        if err_data[-1] == "\n"
+          stderr_rest = ""
+        else
+          stderr_rest = lines.pop
+        end
+
+        lines.each do |line|
+          if line.match(canary)
+            thr.exit
+            raise RunawayProcessError
+          end
+        end
+
+      end
+
+      stderr_file.write(enc_conv.to(err_data)) if stderr_file
+      $stderr.write err_data if echo_output
+    end
 
 
-    # read and write stdin/stdout/stderr to avoid deadlocking on processes that blocks on writing.
-    # e.g. HunPos
+    # read and write all streams until all input has been written to stdin
     begin
       until stdin_file.eof?
+        read, write = IO.select([stdout,stderr], [stdin])
 
-        # wait until stdout is emptied until we try to write or hunpos-tag will block
-        until stdout.ready? or stdin_file.eof?
-          begin
-            in_data = stdin_file.readpartial(IO_BUF_SIZE)
+        (read + write).each do |str|
+          if str == stdout
+            begin
+              stdout_handler.call
+            rescue EOFError
 
-            # non-blocking write to avoid blocking when runnning tree-tagger
-            # keep track of written characters to make sure everything is written
-            # and catch WaitWritable to make sure stdin is ready for writing
-            written = 0
+            end
 
-            while written < in_data.length
+          end
+
+          if str == stderr
+            begin
+              stderr_handler.call
+            rescue EOFError
+
+            end
+          end
+
+          if str == stdin
+            begin
+              stdin_data = stdin_data + enc_conv.from(stdin_file.readpartial(IO_BUF_SIZE))
+
+              # non-blocking write to avoid blocking when running tree-tagger
+              # keep track of written characters to make sure everything is written
+              # and catch WaitWritable to make sure stdin is ready for writing
               begin
-                written += stdin.write_nonblock(enc_conv.from(in_data)[written..-1])
+                written = stdin.write_nonblock(stdin_data)
+                stdin_data = stdin_data[written..-1]
               rescue IO::WaitWritable, Errno::EINTR
-                IO.select(nil, [stdin])
-                retry
+                # fall back to select
               end
+            rescue EOFError
+
             end
-          rescue EOFError
-            break
           end
         end
-
-        while stdout.ready?
-          out_data = stdout.readpartial(IO_BUF_SIZE)
-
-          stdout_file.write(enc_conv.to(out_data)) if stdout_file
-          $stdout.write out_data if echo_output
-        end
-
-        while stderr.ready?
-          err_data = stderr.readpartial(IO_BUF_SIZE)
-
-          if canary
-            # split lines and connect together with next read if necessary
-            lines = (stderr_rest + err_data).split("\n")
-
-            if err_data[-1] == "\n"
-              stderr_rest = ""
-            else
-              stderr_rest = lines.pop
-            end
-
-            lines.each do |line|
-              if line.match(canary)
-                thr.exit
-                raise RunawayProcessError
-              end
-            end
-          end
-
-          stderr_file.write(enc_conv.to(err_data)) if stderr_file
-          $stderr.write err_data if echo_output
-        end
-
-        break if stdin_file.eof?
       end
 
     rescue Errno::EPIPE => e
@@ -187,46 +204,20 @@ module TextlabNLP
       raise e
     end
 
-    # @todo should be done by outside caller?
     stdin.close
 
     # get the rest of the output
     # make sure we wait until output is produced by process
     while thr.alive?
       while stderr.ready?
-        err_data = stderr.readpartial(IO_BUF_SIZE)
-
-        if canary
-          # see comment in similar block above
-          lines = (stderr_rest + err_data).split("\n")
-
-          if err_data[-1] == "\n"
-            stderr_rest = ""
-          else
-            stderr_rest = lines.pop
-          end
-
-          lines.each do |line|
-            if line.match(canary)
-              thr.exit
-              raise RunawayProcessError
-            end
-          end
-        end
-
-        stderr_file.write(enc_conv.to(err_data)) if stderr_file
-        $stderr.write err_data if echo_output
+        stderr_handler.call
       end
 
       while stdout.ready?
-        out_data = stdout.readpartial(IO_BUF_SIZE)
-
-        stdout_file.write(enc_conv.to(out_data)) if stdout_file
-        $stdout.write out_data if echo_output
+        stdout_handler.call
       end
     end
 
-    # @todo should be done by outside caller?
     stderr.close
     stdout.close
 
