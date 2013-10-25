@@ -131,8 +131,6 @@ module TextlabNLP
     end
 
     # run threads and get logs if any
-    log_rest = ""
-
     while threads.detect { |thr| thr.alive? }
       threads.each do |thr|
         # let threads run for a second at a time (tune this for performance?)
@@ -140,6 +138,8 @@ module TextlabNLP
       end
 
       # get logs non-blocking but make sure we don't lose any data from incomplete entries
+      log_rest = ""
+
       while log_read.ready?
         log_rest += log_read.readpartial(1024)
 
@@ -226,6 +226,8 @@ module TextlabNLP
         pids << do_fork.call(input)
 
         # get and pass on logs non-blocking while not missing any "hanging data"
+        log_rest = ""
+
         while log_read.ready?
           log_rest += log_read.readpartial(1024)
 

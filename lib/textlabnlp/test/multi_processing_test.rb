@@ -148,8 +148,9 @@ class MultiProcessingTest < Test::Unit::TestCase
   def test_mp_map
     inputs = 10.times.collect { |i| [i+1, (1..i+1).to_a] }
 
-    result = TextlabNLP.mp_map(inputs) do |input|
+    result = TextlabNLP.mp_map(inputs) do |input, log_str|
       index, seq = input
+      log_str.puts("Processing #{index}")
       [index, seq.inject { |acc, x| acc + x }]
     end
 
@@ -171,8 +172,9 @@ class MultiProcessingTest < Test::Unit::TestCase
 
     inputs = 10.times.collect { |i| [i+1, (1..i+1).to_a] }
 
-    result = TextlabNLP.mp_map(inputs, mode: :thread) do |input|
+    result = TextlabNLP.mp_map(inputs, mode: :thread) do |input, log_str|
       index, seq = input
+      log_str.puts("Processing #{index}")
       [index, seq.inject { |acc, x| acc + x }]
     end
 
