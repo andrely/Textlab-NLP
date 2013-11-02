@@ -198,8 +198,9 @@ module TextlabNLP
     rescue Errno::EPIPE => e
       # if we are here the cmd exited early on us
       # dump stderr
-      err += stderr.read
-      $stderr.puts(err) if echo_output
+      while stderr.ready?
+        stderr_handler.call
+      end
 
       raise e
     end
